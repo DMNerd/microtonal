@@ -1,6 +1,62 @@
-# tonal
+# microtonal
 
-[![npm version](https://img.shields.io/npm/v/tonal.svg?style=flat-square)](https://www.npmjs.com/package/tonal)
+**A microtonal fork of [Tonal](https://github.com/tonaljs/tonal)** — the music
+theory library by [danigb](https://github.com/danigb) and contributors. All
+credit for the original design and code goes to the Tonal project; this fork is
+distributed under the same [MIT License](docs/LICENSE).
+
+## Why this fork exists
+
+Tonal models western music in 12-tone equal temperament (12-TET): note names,
+intervals, pitch-class sets, chord and scale dictionaries all assume twelve
+semitones per octave. That assumption is built into the core (12-bit chromas,
+integer semitone accidentals, `% 12` arithmetic), so it can't be lifted with a
+plugin or a custom dictionary.
+
+`microtonal` extends Tonal to **any equal division of the octave (EDO)** — 19,
+22, 24, 31-EDO and so on — while keeping 12-TET behaviour identical. It was
+started to power the chord naming ("What's this chord?") and theory features of
+a fretboard tuning visualizer that supports arbitrary EDOs, but it aims to be a
+general-purpose library.
+
+## How it works: ups and downs
+
+The fork uses [ups and downs notation](https://en.xen.wiki/w/Ups_and_downs_notation)
+(Kite), the standard way to spell notes in any EDO:
+
+- Tonal already describes every note and interval as a number of **fifths** and
+  **octaves**. That description is tuning-independent.
+- The fork adds a third count, **ups** (`↑`, or `^` when typing) and **downs**
+  (`↓`, or `v`), each one step of the EDO in use.
+- A pitch's size in N-EDO is `fifths × F + octaves × N + ups`, where F is the
+  EDO's best fifth, `round(N × log2(3/2))`. For 12-EDO F = 7, which reproduces
+  Tonal's existing results exactly.
+
+For example, in 24-EDO a sharp is 2 steps and an up is 1 (a quarter-tone), so
+`E↓` is a quarter-tone below E, and a neutral third is `↓3M` (a major third,
+one step down).
+
+## Status
+
+Work in progress on the `edo-ups-downs` branch. Planned stages:
+
+1. **Core pitch model** (`pitch`, `pitch-note`, `pitch-interval`,
+   `pitch-distance`): parse and spell notes and intervals with ups/downs, EDO
+   step and chroma math, EDO-aware transposition and distance. _In progress._
+2. **Pitch-class sets and chords** (`pcset`, `chord-type`, `chord-detect`,
+   `chord`): N-EDO pitch-class sets, microtonal chord types, chord detection in
+   any EDO.
+3. **Scales, keys and the rest** of the dependent packages.
+
+Until the fork is published, packages keep their `@tonaljs/*` names, and the
+install instructions below still refer to upstream Tonal. Use this repository
+directly (e.g. as a local or git dependency) to get the microtonal features.
+
+---
+
+The rest of this README is the upstream Tonal documentation.
+
+## About Tonal
 
 `tonal` is a music theory library. Contains functions to manipulate tonal
 elements of music (note, intervals, chords, scales, modes, keys). It deals with

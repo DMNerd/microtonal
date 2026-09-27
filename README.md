@@ -43,12 +43,13 @@ Work in progress on the `edo-ups-downs` branch.
 1. **Core pitch model** — _done_ (`pitch`, `pitch-note`, `pitch-interval`,
    `pitch-distance`, plus the `note` and `interval` helpers). See
    [Implemented so far](#implemented-so-far).
-2. **Pitch-class sets and chords** (`pcset`, `chord-type`, `chord-detect`,
-   `chord`): N-EDO pitch-class sets, microtonal chord types, chord detection in
-   any EDO. _Next._
-3. **Scales, keys and the rest** of the dependent packages.
+2. **Pitch-class sets and chords** — _done_ (`pcset`, `chord-type`,
+   `chord-detect`, `chord`).
+3. **Scales, keys and the rest** of the dependent packages. _Next._
 
 ### Implemented so far
+
+#### Notes and intervals
 
 **Ups and downs in names.** Notes and intervals accept ups/downs; names are
 always written back with arrows (after the accidentals for notes, before the
@@ -97,10 +98,97 @@ The low-level versions live in `@tonaljs/pitch`: `edoSteps(pitch, edo)`,
   the ups: `simplify("C##↑")` => `"D↑"`. These respellings assume C## = D,
   which holds in 12- and 24-EDO but not in every EDO (in 19-EDO C## ≠ D).
 
-**12-TET compatibility.** Every upstream test still passes unchanged (except
-for the added `ups: 0` field in property snapshots). Legacy properties such as
-`chroma`, `midi`, `height`, `semitones` and `freq` stay 12-TET; they treat an
-up or down as one semitone, which is its size in 12-EDO.
+#### Pitch-class sets
+
+A chroma of length N is a set of N-EDO pitch classes. Pass `{ edo }` to build
+one from notes, intervals or a set number; every `Pcset` has a new `edo`
+property (`12` for traditional sets):
+
+```js
+import { Pcset } from "tonal";
+
+Pcset.get(["C", "E↓", "G"], { edo: 24 }).chroma;
+// => "100000010000001000000000"
+Pcset.intervals(["C", "E↓", "G"], { edo: 24 }); // => ["1P", "↑3m", "5P"]
+Pcset.isEqual(["C", "E↓"], ["C", "Eb↑"], { edo: 24 }); // => true
+```
+
+- A chroma only counts as valid when its length matches the edo (12 by
+  default), so upstream behaviour for malformed chromas is unchanged.
+- A `Pcset` object keeps its own edo, so `isSubsetOf`, `isSupersetOf`,
+  `isNoteIncludedIn`, `filter`, `modes` and `notes` work on N-EDO sets
+  directly. Subset and equality checks compare chromas instead of 32-bit set
+  numbers, so they work for any EDO. `setNum` itself is only exact up to
+  53-EDO.
+- `intervals` names each step with the simplest spelling: fewest ups/downs,
+  then plain qualities (P, M, m) before augmented/diminished, then ups before
+  downs. In 24-EDO the neutral third is `↑3m`; in 19-EDO step 1 is `1A`.
+- `Pcset.chromas()` still lists the 12-EDO chromas only.
+
+#### Chord types
+
+A microtonal chord dictionary is added, spelled in ups and downs:
+
+| Name                             | Intervals     | Symbol      |
+| -------------------------------- | ------------- | ----------- |
+| downmajor                        | 1P ↓3M 5P     | `(↓3)`, `n` |
+| upmajor                          | 1P ↑3M 5P     | `(↑3)`      |
+| upminor                          | 1P ↑3m 5P     | `m(↑3)`     |
+| downminor                        | 1P ↓3m 5P     | `m(↓3)`     |
+| suspended downsecond             | 1P ↓2M 5P     | `sus↓2`     |
+| suspended upfourth               | 1P ↑4P 5P     | `sus↑4`     |
+| dominant seventh downmajor third | 1P ↓3M 5P 7m  | `7(↓3)`     |
+| downmajor seventh                | 1P ↓3M 5P ↓7m | `7(↓3,↓7)`  |
+| upminor seventh                  | 1P ↑3m 5P ↑7m | `m7(↑3,↑7)` |
+| major seventh downmajor third    | 1P ↓3M 5P 7M  | `maj7(↓3)`  |
+| minor downmajor seventh          | 1P 3m 5P ↓7M  | `m(↓maj7)`  |
+
+Symbols put the altered degrees in parentheses: `^` already means major in
+Tonal (`C^7`), and an arrow straight after the root is read as part of the
+root (`C↓7` is a C↓ dominant seventh).
+
+- `ChordType.get` finds these by name or symbol. `ChordType.all()` still
+  returns only the 106 traditional chords, and the 12-EDO chroma index is
+  untouched: in 12-EDO `↓3M` is just `3m`, so a downmajor chord would
+  otherwise shadow the minor chord. `ChordType.allMicrotonal()` lists them.
+- `ChordType.forEdo(edo)` returns the chord types of an EDO, with `chroma`,
+  `setNum`, `normalized` and `edo` computed in that EDO. It leaves out chords
+  whose tones merge in that EDO. It includes microtonal chords only where an
+  up is smaller than a sharp (17, 22, 24, 31, 41, 53-EDO…), and only when
+  they differ from every traditional chord. When two microtonal chords are the
+  same set, the first one listed wins: in 24-EDO downmajor and upminor are the
+  same neutral triad, so it is named `(↓3)`.
+
+#### Chord detection and chords
+
+`detect` takes an `edo` option:
+
+```js
+import { Chord } from "tonal";
+
+Chord.detect(["C", "E↓", "G"], { edo: 24 }); // => ["C(↓3)"]
+Chord.detect(["C", "Eb↑", "G"], { edo: 24 }); // => ["C(↓3)"]
+Chord.detect(["E↓", "G", "C"], { edo: 24 }); // => ["C(↓3)/E↓"]
+Chord.detect(["C", "E", "G"], { edo: 31 }); // => ["CM", …]
+```
+
+- In EDOs other than 12, the notes are compared as pitch classes of that EDO
+  against `ChordType.forEdo(edo)`.
+- `assumePerfectFifth` works in any EDO. Its hard-coded 12-bit masks are
+  replaced by step ranges derived from the EDO; they give the same steps in
+  12-EDO.
+- `Chord.get` understands upped or downed roots and basses (`"E↓m"`,
+  `"^Ebmaj7"`, `"C(↓3)/E↓"`) and the microtonal chord types:
+  `Chord.get("C(↓3)").notes` => `["C", "E↓", "G"]`. Inversions keep their
+  ups, and `Chord.transpose("Cm", "↓2M")` => `"D↓m"`.
+
+#### 12-TET compatibility
+
+Every upstream test still passes. The only changes to them add the new `ups: 0`
+and `edo: 12` fields to expected property objects and snapshots. Legacy
+properties such as `chroma`, `midi`, `height`, `semitones` and `freq` stay
+12-TET; they treat an up or down as one semitone, which is its size in
+12-EDO.
 
 Until the fork is published, packages keep their `@tonaljs/*` names, and the
 install instructions below still refer to upstream Tonal. Use this repository

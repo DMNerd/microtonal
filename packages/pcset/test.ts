@@ -12,6 +12,7 @@ describe("@tonaljs/pcset", () => {
         setNum: 2688,
         chroma: "101010000000",
         normalized: "100000001010",
+        edo: 12,
         intervals: ["1P", "2M", "3M"],
       });
       expect(Pcset.get(["d", "e", "c"])).toEqual(Pcset.get(["c", "d", "e"]));

@@ -18,6 +18,7 @@ describe("gets dictionary", () => {
       aliases: ["ionian"],
       chroma: "101011010101",
       normalized: "101010110101",
+      edo: 12,
     });
   });
 
@@ -30,6 +31,7 @@ describe("gets dictionary", () => {
       chroma: "000000000000",
       intervals: [],
       normalized: "000000000000",
+      edo: 12,
     });
   });
 

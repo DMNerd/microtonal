@@ -40,6 +40,7 @@ describe("@tonaljs/chord-type", () => {
       aliases: ["M", "^", "", "maj"],
       chroma: "100010010000",
       normalized: "100001000100",
+      edo: 12,
     });
   });
 

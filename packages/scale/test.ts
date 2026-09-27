@@ -16,6 +16,7 @@ describe("@tonaljs/scale", () => {
       setNum: 2773,
       chroma: "101011010101",
       normalized: "101010110101",
+      edo: 12,
     });
     expect(Scale.get("c5 pentatonic")).toEqual({
       empty: false,
@@ -28,6 +29,7 @@ describe("@tonaljs/scale", () => {
       setNum: 2708,
       chroma: "101010010100",
       normalized: "100101001010",
+      edo: 12,
     });
     expect(Scale.get("C4 major")).toEqual(Scale.get(["C4", "major"]));
     expect(Scale.get("C4 Major")).toEqual(Scale.get("C4 major"));

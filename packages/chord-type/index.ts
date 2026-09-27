@@ -5,7 +5,10 @@ import {
   PcsetChroma,
   PcsetNum,
 } from "@tonaljs/pcset";
+import { edoSharp } from "@tonaljs/pitch";
+import { interval } from "@tonaljs/pitch-interval";
 import data from "./data";
+import microtonalData from "./microtonal-data";
 
 export type ChordQuality =
   "Major" | "Minor" | "Augmented" | "Diminished" | "Unknown";
@@ -26,7 +29,11 @@ const NoChordType: ChordType = {
 type ChordTypeName = string | PcsetChroma | PcsetNum;
 
 let dictionary: ChordType[] = [];
+// Chords with ups or downs: kept apart because their 12-EDO sizes clash with
+// traditional chords ("↓3M" is "3m" in 12-EDO). See `forEdo`.
+let microtonal: ChordType[] = [];
 let index: Record<ChordTypeName, ChordType> = {};
+let edoCache: Record<number, ChordType[]> = {};
 
 /**
  * Given a chord name or chroma, return the chord properties
@@ -74,11 +81,60 @@ export function all(): ChordType[] {
 export const entries = all;
 
 /**
+ * Return the list of chord types with ups or downs
+ */
+export function allMicrotonal(): ChordType[] {
+  return microtonal.slice();
+}
+
+/**
+ * Get the chord types of an equal division of the octave (EDO), with their
+ * pitch class set (chroma, setNum, normalized) computed in that EDO.
+ *
+ * - Chords whose tones merge in that EDO are left out.
+ * - Chords with ups or downs are only included in EDOs where an up is
+ *   smaller than a sharp (edoSharp >= 2: 17, 22, 24, 31, 41, 53-EDO...) and
+ *   when they are not the same set as a traditional chord. When two of them
+ *   are the same set, only the first one is kept.
+ *
+ * @example
+ * ChordType.forEdo(24).find(t => t.name === "downmajor").chroma
+ * // => "100000010000001000000000"
+ */
+export function forEdo(edo: number): ChordType[] {
+  if (edoCache[edo]) return edoCache[edo].slice();
+
+  const inEdo = (type: ChordType): ChordType | undefined => {
+    const set = pcset(type.intervals, { edo });
+    const tones = set.chroma.split("").filter((c) => c === "1").length;
+    if (tones !== type.intervals.length) return undefined;
+    const { name, quality, aliases, intervals } = type;
+    return { ...set, name, quality, aliases, intervals };
+  };
+
+  const types = dictionary.map(inEdo).filter((t) => t) as ChordType[];
+  if (edoSharp(edo) >= 2) {
+    const seen = new Set(types.map((t) => t.chroma));
+    microtonal.forEach((type) => {
+      const t = inEdo(type);
+      if (t && !seen.has(t.chroma)) {
+        seen.add(t.chroma);
+        types.push(t);
+      }
+    });
+  }
+  edoCache[edo] = types;
+  return types.slice();
+}
+
+/**
  * Clear the dictionary
  */
 export function removeAll() {
   dictionary = [];
+  microtonal = [];
   index = {};
+  edoCache = {};
 }
 
 /**
@@ -96,12 +152,19 @@ export function add(intervals: string[], aliases: string[], fullName?: string) {
     intervals,
     aliases,
   };
-  dictionary.push(chord);
+  edoCache = {};
   if (chord.name) {
     index[chord.name] = chord;
   }
-  index[chord.setNum] = chord;
-  index[chord.chroma] = chord;
+  const hasUps = intervals.some((ivl) => interval(ivl).ups);
+  if (hasUps) {
+    // only reachable by name: its 12-EDO chroma would shadow another chord
+    microtonal.push(chord);
+  } else {
+    dictionary.push(chord);
+    index[chord.setNum] = chord;
+    index[chord.chroma] = chord;
+  }
   chord.aliases.forEach((alias) => addAlias(chord, alias));
 }
 
@@ -110,7 +173,9 @@ export function addAlias(chord: ChordType, alias: string) {
 }
 
 function getQuality(intervals: string[]): ChordQuality {
-  const has = (interval: string) => intervals.indexOf(interval) !== -1;
+  // ups and downs don't change the quality: "↓3M" is still a major third
+  const plain = intervals.map((ivl) => ivl.replace(/[↑↓^v]/g, ""));
+  const has = (interval: string) => plain.indexOf(interval) !== -1;
   return has("5A")
     ? "Augmented"
     : has("3M")
@@ -126,6 +191,9 @@ data.forEach(([ivls, fullName, names]: string[]) =>
   add(ivls.split(" "), names.split(" "), fullName),
 );
 dictionary.sort((a, b) => a.setNum - b.setNum);
+microtonalData.forEach(([ivls, fullName, names]: string[]) =>
+  add(ivls.split(" "), names.split(" "), fullName),
+);
 
 /** @deprecated */
 export default {
@@ -133,6 +201,8 @@ export default {
   symbols,
   get,
   all,
+  allMicrotonal,
+  forEdo,
   add,
   removeAll,
   keys,

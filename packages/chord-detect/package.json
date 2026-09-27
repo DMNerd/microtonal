@@ -18,7 +18,9 @@
   "dependencies": {
     "@tonaljs/chord-type": "5.1.1",
     "@tonaljs/pitch-note": "6.1.0",
-    "@tonaljs/pcset": "4.10.1"
+    "@tonaljs/pcset": "4.10.1",
+    "@tonaljs/pitch": "5.0.2",
+    "@tonaljs/pitch-interval": "6.1.0"
   },
   "author": "danigb@gmail.com",
   "license": "MIT",

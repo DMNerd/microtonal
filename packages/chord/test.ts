@@ -46,6 +46,7 @@ describe("tonal-chord", () => {
         chroma: "100010010001",
         intervals: ["1P", "3M", "5P", "7M"],
         normalized: "100010010001",
+        edo: 12,
         notes: ["G", "B", "D", "F#"],
         quality: "Major",
       });
@@ -65,6 +66,7 @@ describe("tonal-chord", () => {
         chroma: "100010010001",
         intervals: ["3M", "5P", "7M", "8P"],
         normalized: "100010010001",
+        edo: 12,
         notes: ["B", "D", "F#", "G"],
         quality: "Major",
       });
@@ -84,6 +86,7 @@ describe("tonal-chord", () => {
         chroma: "100010010001",
         intervals: ["3M", "5P", "7M", "8P"],
         normalized: "100010010001",
+        edo: 12,
         notes: ["B", "D", "F#", "G"],
         quality: "Major",
       });
@@ -103,6 +106,7 @@ describe("tonal-chord", () => {
         chroma: "100010010001",
         intervals: ["5P", "7M", "8P", "10M"],
         normalized: "100010010001",
+        edo: 12,
         notes: ["D", "F#", "G", "B"],
         quality: "Major",
       });
@@ -132,6 +136,7 @@ describe("tonal-chord", () => {
         empty: false,
         intervals: ["1P", "3m", "5d"],
         normalized: "100000100100",
+        edo: 12,
         notes: [],
         quality: "Diminished",
         setNum: 2336,
@@ -154,6 +159,7 @@ describe("tonal-chord", () => {
       chroma: "100010010001",
       intervals: ["1P", "3M", "5P", "7M"],
       normalized: "100010010001",
+      edo: 12,
       notes: ["C", "E", "G", "B"],
       quality: "Major",
     });
@@ -169,6 +175,7 @@ describe("tonal-chord", () => {
       intervals: ["-2M", "1P", "3M", "5P"],
       name: "C major over Bb",
       normalized: "100001000100",
+      edo: 12,
       notes: ["Bb", "C", "E", "G"],
       quality: "Major",
       root: "",

@@ -1,5 +1,7 @@
-import { all, ChordType } from "@tonaljs/chord-type";
-import { modes } from "@tonaljs/pcset";
+import { all, ChordType, forEdo } from "@tonaljs/chord-type";
+import { get as pcset, modes } from "@tonaljs/pcset";
+import { edoChroma, edoFifth } from "@tonaljs/pitch";
+import { interval } from "@tonaljs/pitch-interval";
 import { note } from "@tonaljs/pitch-note";
 
 interface FoundChord {
@@ -7,9 +9,9 @@ interface FoundChord {
   readonly name: string;
 }
 
-const namedSet = (notes: string[]) => {
+const namedSet = (notes: string[], edo: number) => {
   const pcToName = notes.reduce<Record<number, string>>((record, n) => {
-    const chroma = note(n).chroma;
+    const chroma = edoChroma(note(n), edo);
     if (chroma !== undefined) {
       record[chroma] = record[chroma] || note(n).name;
     }
@@ -21,7 +23,24 @@ const namedSet = (notes: string[]) => {
 
 type DetectOptions = {
   assumePerfectFifth: boolean;
+  /**
+   * Number of equal divisions of the octave (12 by default). In other EDOs
+   * the notes are compared as pitch classes of that EDO, and the chord types
+   * come from `ChordType.forEdo(edo)` (including microtonal chords where they
+   * make sense).
+   */
+  edo: number;
 };
+
+/**
+ * Find the chord names that match a list of notes.
+ * The first note is taken as the bass: chords rooted elsewhere are returned
+ * as slash chords with half the weight, after the root position ones.
+ *
+ * @example
+ * detect(["D", "F#", "A", "C"]) // => ["D7"]
+ * detect(["C", "E↓", "G"], { edo: 24 }) // => ["C(↓3)"]
+ */
 export function detect(
   source: string[],
   options: Partial<DetectOptions> = {},
@@ -39,74 +58,91 @@ export function detect(
     .map((chord) => chord.name);
 }
 
-/* tslint:disable:no-bitwise */
-const BITMASK = {
-  // 3m 000100000000
-  // 3M 000010000000
-  anyThirds: 384,
-  // 5P 000000010000
-  perfectFifth: 16,
-  // 5d 000000100000
-  // 5A 000000001000
-  nonPerfectFifths: 40,
-  anySeventh: 3,
-};
+// Steps (in an EDO) of the degrees looked at by `assumePerfectFifth`.
+// In 12-EDO: thirds 3 and 4, fifth 7, other fifths 6 and 8, sevenths 10 and 11
+interface FifthRules {
+  fifth: number;
+  thirds: number[];
+  nonPerfectFifths: number[];
+  sevenths: number[];
+}
 
-const testChromaNumber = (bitmask: number) => (chromaNumber: number) =>
-  Boolean(chromaNumber & bitmask);
-const hasAnyThird = testChromaNumber(BITMASK.anyThirds);
-const hasPerfectFifth = testChromaNumber(BITMASK.perfectFifth);
-const hasAnySeventh = testChromaNumber(BITMASK.anySeventh);
-const hasNonPerfectFifth = testChromaNumber(BITMASK.nonPerfectFifths);
+const rulesCache: Record<number, FifthRules> = {};
 
-function hasAnyThirdAndPerfectFifthAndAnySeventh(chordType: ChordType) {
-  const chromaNumber = parseInt(chordType.chroma, 2);
+function fifthRules(edo: number): FifthRules {
+  if (rulesCache[edo]) return rulesCache[edo];
+  const at = (name: string) => edoChroma(interval(name), edo);
+  const between = (from: number, to: number) => {
+    const steps = [];
+    for (let s = from + 1; s < to; s++) steps.push(s);
+    return steps;
+  };
+  const fifth = edoFifth(edo) % edo;
+  return (rulesCache[edo] = {
+    fifth,
+    thirds: between(at("2M"), at("4P")),
+    // anything from just above the fourth up to the minor sixth
+    nonPerfectFifths: between(at("4P"), at("6m") + 1).filter(
+      (s) => s !== fifth,
+    ),
+    sevenths: between(at("6M"), edo),
+  });
+}
+
+const hasAny = (chroma: string, steps: number[]) =>
+  steps.some((s) => chroma[s] === "1");
+
+function hasAnyThirdAndPerfectFifthAndAnySeventh(
+  chordType: ChordType,
+  rules: FifthRules,
+) {
+  const chroma = chordType.chroma;
   return (
-    hasAnyThird(chromaNumber) &&
-    hasPerfectFifth(chromaNumber) &&
-    hasAnySeventh(chromaNumber)
+    hasAny(chroma, rules.thirds) &&
+    chroma[rules.fifth] === "1" &&
+    hasAny(chroma, rules.sevenths)
   );
 }
 
-function withPerfectFifth(chroma: string): string {
-  const chromaNumber = parseInt(chroma, 2);
-  return hasNonPerfectFifth(chromaNumber)
+function withPerfectFifth(chroma: string, rules: FifthRules): string {
+  return hasAny(chroma, rules.nonPerfectFifths)
     ? chroma
-    : (chromaNumber | 16).toString(2);
+    : chroma.slice(0, rules.fifth) + "1" + chroma.slice(rules.fifth + 1);
 }
 
-/* tslint:enable:no-bitwise */
-
-type FindMatchesOptions = {
-  assumePerfectFifth: boolean;
-};
 function findMatches(
   notes: string[],
   weight: number,
-  options: Partial<FindMatchesOptions>,
+  options: Partial<DetectOptions>,
 ): FoundChord[] {
+  const edo =
+    Number.isInteger(options.edo) && (options.edo as number) > 0
+      ? (options.edo as number)
+      : 12;
+  const rules = fifthRules(edo);
+  const chordTypes = edo === 12 ? all() : forEdo(edo);
   const tonic = notes[0];
-  const tonicChroma = note(tonic).chroma;
-  const noteName = namedSet(notes);
+  const tonicChroma = edoChroma(note(tonic), edo);
+  const noteName = namedSet(notes, edo);
   // we need to test all chromas to get the correct baseNote
-  const allModes = modes(notes, false);
+  const allModes = modes(pcset(notes, { edo }), false);
 
   const found: FoundChord[] = [];
   allModes.forEach((mode, index) => {
     const modeWithPerfectFifth =
-      options.assumePerfectFifth && withPerfectFifth(mode);
+      options.assumePerfectFifth && withPerfectFifth(mode, rules);
     // some chords could have the same chroma but different interval spelling
-    const chordTypes = all().filter((chordType) => {
+    const matches = chordTypes.filter((chordType) => {
       if (
         options.assumePerfectFifth &&
-        hasAnyThirdAndPerfectFifthAndAnySeventh(chordType)
+        hasAnyThirdAndPerfectFifthAndAnySeventh(chordType, rules)
       ) {
         return chordType.chroma === modeWithPerfectFifth;
       }
       return chordType.chroma === mode;
     });
 
-    chordTypes.forEach((chordType) => {
+    matches.forEach((chordType) => {
       const chordName = chordType.aliases[0];
       const baseNote = noteName(index);
       const isInversion = index !== tonicChroma;

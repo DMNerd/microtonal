@@ -1,5 +1,5 @@
 import { compact, range, rotate } from "@tonaljs/collection";
-import { NotFound } from "@tonaljs/pitch";
+import { NotFound, edoChroma } from "@tonaljs/pitch";
 import { transpose } from "@tonaljs/pitch-distance";
 import { Interval, IntervalName, interval } from "@tonaljs/pitch-interval";
 import { Note, NoteName, note } from "@tonaljs/pitch-note";
@@ -16,6 +16,12 @@ import { Note, NoteName, note } from "@tonaljs/pitch-note";
  * @param {number} length - the number of notes of the pitch class set
  * @param {IntervalName[]} intervals - the intervals of the pitch class set
  * *starting from C*
+ * @param {number} edo - the number of equal divisions of the octave of the
+ * set, which is the length of the chroma (12 for traditional sets)
+ *
+ * Sets of other equal divisions of the octave (EDOs) have a chroma of that
+ * length: a 24-char chroma is a set of quarter tones. For those, `setNum` is
+ * only exact up to 53-EDO; use the chroma to identify larger sets.
  */
 export interface Pcset {
   readonly name: string;
@@ -24,6 +30,7 @@ export interface Pcset {
   readonly chroma: PcsetChroma;
   readonly normalized: PcsetChroma;
   readonly intervals: IntervalName[];
+  readonly edo: number;
 }
 
 export const EmptyPcset: Pcset = {
@@ -33,28 +40,53 @@ export const EmptyPcset: Pcset = {
   chroma: "000000000000",
   normalized: "000000000000",
   intervals: [],
+  edo: 12,
 };
+
+/**
+ * Options to build a pitch class set from a note, interval or set number:
+ * - edo: the number of equal divisions of the octave (12 by default)
+ */
+export interface PcsetOptions {
+  edo: number;
+}
 
 export type PcsetChroma = string;
 export type PcsetNum = number;
 
 // UTILITIES
-const setNumToChroma = (num: number): string =>
-  Number(num).toString(2).padStart(12, "0");
+const setNumToChroma = (num: number, edo = 12): string =>
+  Number(num).toString(2).padStart(edo, "0");
 const chromaToNumber = (chroma: string): number => parseInt(chroma, 2);
-const REGEX = /^[01]{12}$/;
+const REGEX = /^[01]+$/;
+const emptyChroma = (edo: number) => "0".repeat(edo);
 
+// Options may come from untrusted places, like the index when `get` is used
+// as a `map` callback: only a positive integer edo is accepted
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function isChroma(set: any): set is PcsetChroma {
-  return REGEX.test(set);
+const edoOf = (options: any): number => {
+  const edo = options && typeof options === "object" ? options.edo : undefined;
+  return Number.isInteger(edo) && edo > 0 ? edo : 12;
+};
+
+/**
+ * Test if a value is a chroma: a string of "0" and "1" of length `edo`
+ * (12 by default)
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function isChroma(set: any, edo = 12): set is PcsetChroma {
+  return typeof set === "string" && set.length === edo && REGEX.test(set);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const isPcsetNum = (set: any): set is PcsetNum =>
-  typeof set === "number" && set >= 0 && set <= 4095;
+const isPcsetNum = (set: any, edo = 12): set is PcsetNum =>
+  typeof set === "number" && set >= 0 && set <= 2 ** edo - 1;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const isPcset = (set: any): set is Pcset => set && isChroma(set.chroma);
+const isPcset = (set: any): set is Pcset =>
+  set &&
+  typeof set.chroma === "string" &&
+  isChroma(set.chroma, set.chroma.length);
 
 const cache: { [key in string]: Pcset } = { [EmptyPcset.chroma]: EmptyPcset };
 
@@ -70,17 +102,26 @@ export type Set =
 
 /**
  * Get the pitch class set of a collection of notes or set number or chroma
+ *
+ * Use the `edo` option to build sets of other equal divisions of the octave.
+ * A chroma must have `edo` characters to be valid (so 12 by default), while
+ * a pcset object keeps its own edo.
+ *
+ * @example
+ * Pcset.get(["C", "E↓", "G"], { edo: 24 }).chroma
+ * // => "100000010000001000000000"
  */
-export function get(src: Set): Pcset {
-  const chroma: PcsetChroma = isChroma(src)
+export function get(src: Set, options?: Partial<PcsetOptions>): Pcset {
+  const edo = edoOf(options);
+  const chroma: PcsetChroma = isChroma(src, edo)
     ? src
-    : isPcsetNum(src)
-      ? setNumToChroma(src)
+    : isPcsetNum(src, edo)
+      ? setNumToChroma(src, edo)
       : Array.isArray(src)
-        ? listToChroma(src)
+        ? listToChroma(src, edo)
         : isPcset(src)
           ? src.chroma
-          : EmptyPcset.chroma;
+          : emptyChroma(edo);
 
   return (cache[chroma] = cache[chroma] || chromaToPcset(chroma));
 }
@@ -97,7 +138,8 @@ export const pcset = get;
  * @example
  * Pcset.chroma(["c", "d", "e"]); //=> "101010000000"
  */
-export const chroma = (set: Set) => get(set).chroma;
+export const chroma = (set: Set, options?: Partial<PcsetOptions>) =>
+  get(set, options).chroma;
 
 /**
  * Get intervals (from C) of a set
@@ -105,7 +147,8 @@ export const chroma = (set: Set) => get(set).chroma;
  * @example
  * Pcset.intervals(["c", "d", "e"]); //=>
  */
-export const intervals = (set: Set) => get(set).intervals;
+export const intervals = (set: Set, options?: Partial<PcsetOptions>) =>
+  get(set, options).intervals;
 
 /**
  * Get pitch class set number
@@ -113,7 +156,8 @@ export const intervals = (set: Set) => get(set).intervals;
  * @example
  * Pcset.num(["c", "d", "e"]); //=> 2192
  */
-export const num = (set: Set) => get(set).setNum;
+export const num = (set: Set, options?: Partial<PcsetOptions>) =>
+  get(set, options).setNum;
 
 const IVLS = [
   "1P",
@@ -138,12 +182,70 @@ const IVLS = [
  * if not a valid pitch class set
  */
 function chromaToIntervals(chroma: PcsetChroma): IntervalName[] {
+  const names = chroma.length === 12 ? IVLS : edoIntervalNames(chroma.length);
   const intervals = [];
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < chroma.length; i++) {
     // tslint:disable-next-line:curly
-    if (chroma.charAt(i) === "1") intervals.push(IVLS[i]);
+    if (chroma.charAt(i) === "1") intervals.push(names[i]);
   }
   return intervals;
+}
+
+// Interval spellings tried for each step of an EDO, most preferred first:
+// the 12-TET names, then augmented/diminished ones
+const EDO_CANDIDATES = [
+  ...IVLS,
+  "1A",
+  "2A",
+  "3d",
+  "3A",
+  "4d",
+  "4A",
+  "5A",
+  "6d",
+  "6A",
+  "7d",
+  "7A",
+  "2d",
+];
+
+const edoNamesCache: Record<number, IntervalName[]> = {};
+
+/**
+ * Name every step of an EDO with an interval (within an octave). The name
+ * with the fewest ups or downs wins; then plain qualities (P, M, m) over
+ * augmented or diminished; then ups over downs. So, in 24-EDO step 7 (the
+ * neutral third) is "↑3m" and in 19-EDO step 1 is "1A".
+ *
+ * @private
+ */
+export function edoIntervalNames(edo: number): IntervalName[] {
+  if (edoNamesCache[edo]) return edoNamesCache[edo];
+  const best: { name: IntervalName; cost: number[] }[] = [];
+  EDO_CANDIDATES.forEach((candidate, order) => {
+    const ivl = interval(candidate);
+    const size = edoChroma(ivl, edo);
+    const plain = /^[PMm]$/.test(ivl.q) ? 0 : 1;
+    for (let step = 0; step < edo; step++) {
+      // ups needed to reach `step` from this interval, the short way round
+      const diff = (((step - size) % edo) + edo) % edo;
+      const ups = diff > edo / 2 ? diff - edo : diff;
+      const cost = [Math.abs(ups), plain, ups < 0 ? 1 : 0, order];
+      const current = best[step];
+      if (!current || compareCosts(cost, current.cost) < 0) {
+        const arrows = ups < 0 ? "↓".repeat(-ups) : "↑".repeat(ups);
+        best[step] = { name: arrows + candidate, cost };
+      }
+    }
+  });
+  return (edoNamesCache[edo] = best.map((b) => b.name));
+}
+
+function compareCosts(a: number[], b: number[]): number {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return a[i] - b[i];
+  }
+  return 0;
 }
 
 export function notes(set: Set): NoteName[] {
@@ -159,7 +261,7 @@ export function notes(set: Set): NoteName[] {
  * @return {Array<PcsetChroma>} an array of possible chromas from '10000000000' to '11111111111'
  */
 export function chromas(): PcsetChroma[] {
-  return range(2048, 4095).map(setNumToChroma);
+  return range(2048, 4095).map((num) => setNumToChroma(num));
 }
 
 /**
@@ -197,8 +299,8 @@ export function modes(set: Set, normalize = true): PcsetChroma[] {
  * @example
  * Pcset.isEqual(["c2", "d3"], ["c5", "d2"]) // => true
  */
-export function isEqual(s1: Set, s2: Set) {
-  return get(s1).setNum === get(s2).setNum;
+export function isEqual(s1: Set, s2: Set, options?: Partial<PcsetOptions>) {
+  return get(s1, options).chroma === get(s2, options).chroma;
 }
 
 /**
@@ -217,12 +319,13 @@ export function isEqual(s1: Set, s2: Set) {
  * inCMajor(["e6", "c4", "d3"]) // => false
  */
 export function isSubsetOf(set: Set) {
-  const s = get(set).setNum;
+  const s = get(set);
 
   return (notes: Set | Pcset) => {
-    const o = get(notes).setNum;
-    // tslint:disable-next-line: no-bitwise
-    return s && s !== o && (o & s) === o;
+    const o = get(notes, { edo: s.edo });
+    return (
+      s.setNum !== 0 && s.chroma !== o.chroma && includesAll(s.chroma, o.chroma)
+    );
   };
 }
 
@@ -239,12 +342,22 @@ export function isSubsetOf(set: Set) {
  * extendsCMajor(["c6", "e4", "g3"]) // => false
  */
 export function isSupersetOf(set: Set) {
-  const s = get(set).setNum;
+  const s = get(set);
   return (notes: Set) => {
-    const o = get(notes).setNum;
-    // tslint:disable-next-line: no-bitwise
-    return s && s !== o && (o | s) === o;
+    const o = get(notes, { edo: s.edo });
+    return (
+      s.setNum !== 0 && s.chroma !== o.chroma && includesAll(o.chroma, s.chroma)
+    );
   };
+}
+
+// true if every pitch class of `sub` is in `sup` (same edo only)
+function includesAll(sup: PcsetChroma, sub: PcsetChroma): boolean {
+  if (sup.length !== sub.length) return false;
+  for (let i = 0; i < sub.length; i++) {
+    if (sub[i] === "1" && sup[i] !== "1") return false;
+  }
+  return true;
 }
 
 /**
@@ -266,7 +379,7 @@ export function isNoteIncludedIn(set: Set) {
 
   return (noteName: NoteName): boolean => {
     const n = note(noteName);
-    return s && !n.empty && s.chroma.charAt(n.chroma) === "1";
+    return s && !n.empty && s.chroma.charAt(edoChroma(n, s.edo)) === "1";
   };
 }
 
@@ -317,12 +430,13 @@ function chromaRotations(chroma: string): string[] {
 }
 
 function chromaToPcset(chroma: PcsetChroma): Pcset {
+  const edo = chroma.length;
   const setNum = chromaToNumber(chroma);
-  const normalizedNum = chromaRotations(chroma)
-    .map(chromaToNumber)
-    .filter((n) => n >= 2048)
-    .sort()[0];
-  const normalized = setNumToChroma(normalizedNum);
+  // the smallest rotation that starts with a pitch class
+  const normalized =
+    chromaRotations(chroma)
+      .filter((r) => r[0] === "1")
+      .sort()[0] ?? emptyChroma(edo);
 
   const intervals = chromaToIntervals(chroma);
 
@@ -333,24 +447,25 @@ function chromaToPcset(chroma: PcsetChroma): Pcset {
     chroma,
     normalized,
     intervals,
+    edo,
   };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function listToChroma(set: any[]): PcsetChroma {
+function listToChroma(set: any[], edo = 12): PcsetChroma {
   if (set.length === 0) {
-    return EmptyPcset.chroma;
+    return emptyChroma(edo);
   }
 
   let pitch: Note | Interval | NotFound;
-  const binary = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  const binary = new Array(edo).fill(0);
   // tslint:disable-next-line:prefer-for-of
   for (let i = 0; i < set.length; i++) {
     pitch = note(set[i]);
     // tslint:disable-next-line: curly
     if (pitch.empty) pitch = interval(set[i]);
     // tslint:disable-next-line: curly
-    if (!pitch.empty) binary[pitch.chroma] = 1;
+    if (!pitch.empty) binary[edoChroma(pitch as Note | Interval, edo)] = 1;
   }
   return binary.join("");
 }

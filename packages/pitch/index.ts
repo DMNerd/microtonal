@@ -140,17 +140,74 @@ export function edoSharp(edo: number): number {
   return 7 * edoFifth(edo) - 4 * edo;
 }
 
+const JUST_FIFTH_CENTS = 1200 * Math.log2(3 / 2);
+
+/**
+ * How pitches are sized in an EDO:
+ * - fifth: steps of its best fifth (`edoFifth`)
+ * - sharp: steps of a sharp (`edoSharp`)
+ * - fifthErrorCents: how far that fifth is from a just 3/2
+ * - spelling: "fifths" when the EDO's fifths make a usable diatonic scale (a
+ *   sharp of at least one step and a fifth within 15 cents), so notes and
+ *   intervals are sized by stacking fifths. Otherwise "proportional": the
+ *   12-TET size is scaled to the EDO (and ups/downs are still one step).
+ *
+ * Proportional EDOs are the ones where stacked fifths collapse or scramble
+ * the scale: 7, 14, 21, 28, 35 (sharp = 0), 9, 11, 16, 23 (sharp < 0) and
+ * 5, 6, 8, 10, 13, 15, 18, 20, 25, 30 (fifth off by 18 cents or more).
+ *
+ * @example
+ * edoProfile(22) // => { edo: 22, fifth: 13, sharp: 3, fifthErrorCents: 7.1, spelling: "fifths" }
+ * edoProfile(28).spelling // => "proportional"
+ */
+export interface EdoProfile {
+  edo: number;
+  fifth: number;
+  sharp: number;
+  fifthErrorCents: number;
+  spelling: "fifths" | "proportional";
+}
+
+const MAX_FIFTH_ERROR_CENTS = 15;
+const profileCache: Record<number, EdoProfile> = {};
+
+export function edoProfile(edo: number): EdoProfile {
+  if (profileCache[edo]) return profileCache[edo];
+  const fifth = edoFifth(edo);
+  const sharp = edoSharp(edo);
+  const fifthErrorCents =
+    Math.round(((fifth * 1200) / edo - JUST_FIFTH_CENTS) * 10) / 10;
+  const spelling =
+    sharp >= 1 && Math.abs(fifthErrorCents) <= MAX_FIFTH_ERROR_CENTS
+      ? "fifths"
+      : "proportional";
+  return (profileCache[edo] = { edo, fifth, sharp, fifthErrorCents, spelling });
+}
+
+// Round half away from zero, so descending sizes mirror ascending ones
+const roundSymmetric = (n: number) => Math.sign(n) * Math.round(Math.abs(n));
+
 /**
  * Signed size of a pitch, in steps of the given EDO. For notes with octave
  * it is the absolute height (C0 = 0), for pitch classes it's the distance
  * above C, and for intervals the (directed) size.
  *
  * In 12-EDO this equals `height` for notes and `semitones` for intervals.
+ * In "proportional" EDOs (see `edoProfile`) the 12-TET size is scaled to the
+ * EDO instead of stacking fifths.
  */
 export function edoSteps(pitch: Pitch, edo = 12): number {
   const [f, o = 0] = coordinates(pitch);
   const ups = (pitch.dir ?? 1) * (pitch.ups ?? 0);
-  const steps = f * edoFifth(edo) + o * edo + ups;
+  let steps: number;
+  if (edoProfile(edo).spelling === "proportional") {
+    // pitch classes are reduced to one octave before scaling, so each one
+    // rounds like its own interval above C
+    const semitones = pitch.oct === undefined ? mod(f * 7, 12) : f * 7 + o * 12;
+    steps = roundSymmetric((semitones * edo) / 12) + ups;
+  } else {
+    steps = f * edoFifth(edo) + o * edo + ups;
+  }
   // pitch classes have no octave: reduce to 0..edo-1 above C
   return pitch.oct === undefined ? mod(steps, edo) : steps;
 }

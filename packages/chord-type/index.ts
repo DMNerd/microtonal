@@ -95,7 +95,8 @@ export function allMicrotonal(): ChordType[] {
  *
  * - Chords whose tones merge in that EDO are left out.
  * - Chords with ups or downs are only included in EDOs where an up is
- *   smaller than a sharp (edoSharp >= 2: 17, 22, 24, 31, 41, 53-EDO...) and
+ *   smaller than a sharp in an EDO spelled by fifths (17, 22, 24, 31, 41,
+ *   53-EDO...; see `edoProfile`) and
  *   when they are not the same set as a traditional chord. When two of them
  *   are the same set, only the first one is kept.
  *

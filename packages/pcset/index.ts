@@ -1,5 +1,5 @@
 import { compact, range, rotate } from "@tonaljs/collection";
-import { NotFound, edoChroma, edoSharp } from "@tonaljs/pitch";
+import { NotFound, edoChroma, edoProfile } from "@tonaljs/pitch";
 import { transpose } from "@tonaljs/pitch-distance";
 import {
   Interval,
@@ -370,7 +370,8 @@ export interface IntervalSetType extends Pcset {
  *
  * - Types whose tones merge in that EDO are left out.
  * - Microtonal types (with ups or downs) are only included in EDOs where an
- *   up is smaller than a sharp (edoSharp >= 2), and only when they are not
+ *   up is smaller than a sharp (edoSharp >= 2) and the EDO is spelled by
+ *   fifths (see `edoProfile`), and only when they are not
  *   the same set as a traditional type. When two of them are the same set,
  *   the first one wins.
  *
@@ -389,7 +390,8 @@ export function projectTypesToEdo<T extends IntervalSetType>(
   };
 
   const types = traditional.map(inEdo).filter((t) => t) as T[];
-  if (edoSharp(edo) >= 2) {
+  const profile = edoProfile(edo);
+  if (profile.spelling === "fifths" && profile.sharp >= 2) {
     const seen = new globalThis.Set(types.map((t) => t.chroma));
     microtonal.forEach((type) => {
       const t = inEdo(type);

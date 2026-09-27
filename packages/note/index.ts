@@ -140,26 +140,101 @@ export function edoFreq(
   return refFreq * Math.pow(2, steps / edo);
 }
 
+/** Accidental preference when spelling EDO steps: sharps/ups or flats/downs */
+export type EdoAccidental = "sharp" | "flat";
+
+const LETTERS = ["C", "D", "E", "F", "G", "A", "B"];
+const SPELLING_ACCIDENTALS = ["", "#", "b", "##", "bb"];
+const spellingCache: Record<string, string[]> = {};
+
+/**
+ * Spell every pitch class of an EDO with a sharp or flat preference.
+ * Among all spellings (naturals, single and double sharps and flats, plus
+ * ups or downs) the winner has, in order:
+ *
+ * 1. the fewest ups or downs, counting a double sharp or flat as one more
+ *    (in 31-EDO step 1 is "C↑", not "B##")
+ * 2. ups for the sharp view, downs for the flat view
+ * 3. the fewest accidentals
+ * 4. no E#, B#, Cb or Fb (in 17-EDO step 1 is "Db", not "B#")
+ * 5. sharps for the sharp view, flats for the flat view
+ *
+ * @example
+ * Note.edoNames(24, "sharp").slice(0, 4) // => ["C", "C↑", "C#", "C#↑"]
+ * Note.edoNames(24, "flat").slice(0, 4) // => ["C", "Db↓", "Db", "D↓"]
+ * Note.edoNames(19, "sharp").slice(0, 3) // => ["C", "C#", "Db"]
+ */
+export function edoNames(edo: number, accidental: EdoAccidental): string[] {
+  if (!Number.isInteger(edo) || edo < 1) return [];
+  const key = `${edo}/${accidental}`;
+  if (spellingCache[key]) return spellingCache[key].slice();
+
+  const preferUps = accidental === "sharp";
+  const viewAcc = preferUps ? "#" : "b";
+  const best: { name: string; cost: number[] }[] = [];
+  for (const letter of LETTERS) {
+    for (const acc of SPELLING_ACCIDENTALS) {
+      const size = pitchEdoChroma(props(letter + acc), edo);
+      for (let chroma = 0; chroma < edo; chroma++) {
+        const diff = (((chroma - size) % edo) + edo) % edo;
+        const ups = diff > edo / 2 ? diff - edo : diff;
+        const cost = [
+          Math.abs(ups) + (acc.length > 1 ? 1 : 0),
+          ups === 0 || ups > 0 === preferUps ? 0 : 1,
+          acc.length,
+          (acc[0] === "#" && (letter === "E" || letter === "B")) ||
+          (acc[0] === "b" && (letter === "C" || letter === "F"))
+            ? 1
+            : 0,
+          acc === "" || acc[0] === viewAcc ? 0 : 1,
+        ];
+        const current = best[chroma];
+        if (!current || compareCosts(cost, current.cost) < 0) {
+          best[chroma] = {
+            name: props({ ...props(letter + acc), ups }).name,
+            cost,
+          };
+        }
+      }
+    }
+  }
+  spellingCache[key] = best.map((b) => b.name);
+  return spellingCache[key].slice();
+}
+
+function compareCosts(a: number[], b: number[]): number {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return a[i] - b[i];
+  }
+  return 0;
+}
+
 /**
  * Get a note name from its height in steps of an equal division of the
- * octave (C0 = 0). Each step is spelled with the simplest name above C
- * (fewest ups and downs, see `Pcset.intervals`).
+ * octave (C0 = 0).
+ *
+ * With an `accidental` preference each step is spelled like `edoNames`.
+ * Without it, each step gets the simplest interval name above C (fewest ups
+ * and downs, see `Pcset.intervals`).
  *
  * @example
  * Note.fromEdoSteps(104, 24) // => "E4"
  * Note.fromEdoSteps(103, 24) // => "Eb↑4"
+ * Note.fromEdoSteps(103, 24, { accidental: "sharp" }) // => "D#↑4"
  * Note.fromEdoSteps(7, 24, { pitchClass: true }) // => "Eb↑"
  */
 export function fromEdoSteps(
   steps: number,
   edo = 12,
-  options: { pitchClass?: boolean } = {},
+  options: { pitchClass?: boolean; accidental?: EdoAccidental } = {},
 ): NoteName {
   if (!Number.isInteger(steps) || !Number.isInteger(edo) || edo < 1) {
     return "";
   }
   const chroma = ((steps % edo) + edo) % edo;
-  const pc = _tr("C", edoIntervalNames(edo)[chroma]);
+  const pc = options.accidental
+    ? edoNames(edo, options.accidental)[chroma]
+    : _tr("C", edoIntervalNames(edo)[chroma]);
   if (options.pitchClass) return pc;
   const n0 = props(pc + "0");
   const oct = (steps - pitchEdoSteps(n0, edo)) / edo;
@@ -398,6 +473,7 @@ export default {
   edoSteps,
   edoChroma,
   edoFreq,
+  edoNames,
   fromEdoSteps,
   transpose,
   tr,

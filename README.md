@@ -87,6 +87,34 @@ The low-level versions live in `@tonaljs/pitch`: `edoSteps(pitch, edo)`,
 `edoChroma(pitch, edo)`, `edoFifth(edo)` (the EDO's best fifth) and
 `edoSharp(edo)` (size of a sharp: 1 in 12/19-EDO, 2 in 24/31-EDO).
 
+**EDO profiles: fifths or proportional.** Stacking fifths only makes sense
+when the EDO's fifth is close to 3/2 and a sharp is at least one step. In
+28-EDO, say, fifths make the major third, the minor third and the diminished
+fifth all 8 steps. `edoProfile(edo)` (in `@tonaljs/pitch`) classifies every
+EDO:
+
+```js
+edoProfile(22);
+// => { edo: 22, fifth: 13, sharp: 3, fifthErrorCents: 7.1, spelling: "fifths" }
+edoProfile(28).spelling; // => "proportional"
+```
+
+An EDO is spelled by `"fifths"` when its sharp is at least one step and its
+fifth is within 15 cents of a just fifth. The others are `"proportional"`:
+7, 14, 21, 28, 35 (sharp of 0), 9, 11, 16, 23 (negative sharp) and 5, 6, 8,
+10, 13, 15, 18, 20, 25, 30 (fifth 18 cents or more out). In a proportional
+EDO, `edoSteps`/`edoChroma` (and everything built on them: pitch-class sets,
+`forEdo`, chord and scale detection) scale the 12-TET size to the EDO,
+rounded, and ups and downs stay one step each:
+
+```js
+Interval.edoSteps("3M", 22); // => 8  (fifths)
+Interval.edoSteps("3M", 28); // => 9  (proportional: 4 × 28/12 = 9.33)
+```
+
+Microtonal chords and scales are only offered in EDOs spelled by fifths with
+a sharp of at least two steps.
+
 **Frequencies and step names.** `Note.edoFreq` tunes a note in any EDO
 (A4 = 440Hz unless you pass another reference), and `Note.fromEdoSteps` names
 an EDO step:
@@ -102,6 +130,34 @@ Note.fromEdoSteps(7, 24, { pitchClass: true }); // => "Eb↑"
 Steps are spelled with the simplest name above C (fewest ups and downs), the
 same rule as `Pcset.intervals`; `edoIntervalNames(edo)` in
 `@tonaljs/pitch-interval` gives the whole list.
+
+**Sharp and flat views.** `Note.edoNames(edo, "sharp" | "flat")` spells every
+pitch class of an EDO the way a sharp-leaning or flat-leaning note picker
+would, and `Note.fromEdoSteps(steps, edo, { accidental })` uses the same
+spelling:
+
+```js
+Note.edoNames(24, "sharp"); // => ["C", "C↑", "C#", "C#↑", "D", …]
+Note.edoNames(24, "flat"); // => ["C", "Db↓", "Db", "D↓", "D", …]
+Note.edoNames(19, "sharp"); // => ["C", "C#", "Db", "D", …, "E", "E#", "F", …]
+Note.edoNames(31, "sharp"); // => ["C", "C↑", "C#", "Db", "Db↑", "D", …]
+Note.fromEdoSteps(103, 24, { accidental: "sharp" }); // => "D#↑4"
+```
+
+Every natural, single and double sharp and flat, with any number of ups or
+downs, is a candidate; the winner has, in order:
+
+1. the fewest ups or downs, counting a double sharp or flat as one more (so
+   31-EDO step 1 is `C↑`, not `B##`)
+2. ups in the sharp view, downs in the flat view
+3. the fewest accidentals
+4. no `E#`, `B#`, `Cb` or `Fb` when something else ties (17-EDO step 1 is
+   `Db`, not `B#`)
+5. sharps in the sharp view, flats in the flat view
+
+This reproduces the usual 12-TET names and needs no ups where the EDO has
+enough sharps and flats (19-EDO). Every name spells its own step: tested for
+both views in EDOs 5 to 72.
 
 **Operations keep ups and downs:**
 

@@ -1,6 +1,6 @@
 import { all, ChordType, forEdo, tier } from "@tonaljs/chord-type";
 import { get as pcset, modes } from "@tonaljs/pcset";
-import { edoChroma, edoFifth } from "@tonaljs/pitch";
+import { edoChroma } from "@tonaljs/pitch";
 import { interval } from "@tonaljs/pitch-interval";
 import { note } from "@tonaljs/pitch-note";
 
@@ -84,7 +84,7 @@ function fifthRules(edo: number): FifthRules {
     for (let s = from + 1; s < to; s++) steps.push(s);
     return steps;
   };
-  const fifth = edoFifth(edo) % edo;
+  const fifth = at("5P");
   return (rulesCache[edo] = {
     fifth,
     thirds: between(at("2M"), at("4P")),

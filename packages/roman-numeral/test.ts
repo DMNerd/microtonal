@@ -34,6 +34,7 @@ describe("tonal-roman-numeral", () => {
         roman: "VII",
         interval: "7A",
         acc: "#",
+        ups: 0,
         chordType: "b5",
         major: true,
         step: 6,

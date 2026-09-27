@@ -27,3 +27,31 @@ describe("note ups and downs", () => {
     expect(Note.enharmonic("Db")).toBe("C#");
   });
 });
+
+describe("notes in other EDOs", () => {
+  test("edoFreq", () => {
+    expect(Note.edoFreq("A4", 24)).toBe(440);
+    expect(Note.edoFreq("A↑4", 24)).toBeCloseTo(440 * 2 ** (1 / 24));
+    expect(Note.edoFreq("A5", 31)).toBeCloseTo(880);
+    expect(Note.edoFreq("C4", 12)).toBeCloseTo(Note.freq("C4") as number);
+    expect(Note.edoFreq("C4", 19, { refNote: "C4", refFreq: 256 })).toBe(256);
+    expect(Note.edoFreq("C", 24)).toBeNull();
+    expect(Note.edoFreq("nope", 24)).toBeNull();
+  });
+
+  test("fromEdoSteps", () => {
+    expect(Note.fromEdoSteps(104, 24)).toBe("E4");
+    expect(Note.fromEdoSteps(103, 24)).toBe("Eb↑4");
+    expect(Note.fromEdoSteps(7, 24, { pitchClass: true })).toBe("Eb↑");
+    expect(Note.fromEdoSteps(-1, 24)).toBe("B↑-1");
+    expect(Note.fromEdoSteps(61, 12)).toBe(Note.fromMidi(73));
+    // 19-EDO: step 18 is B# and not C
+    expect(Note.fromEdoSteps(18, 19)).toBe("B#0");
+    expect(Note.fromEdoSteps(1.5, 24)).toBe("");
+    for (const edo of [12, 17, 19, 22, 24, 31, 53]) {
+      for (let s = -edo; s < 2 * edo; s++) {
+        expect(Note.edoSteps(Note.fromEdoSteps(s, edo), edo)).toBe(s);
+      }
+    }
+  });
+});

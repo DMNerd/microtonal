@@ -1,6 +1,11 @@
 import { isNamedPitch, isPitch, Pitch } from "@tonaljs/pitch";
 import { interval } from "@tonaljs/pitch-interval";
-import { accToAlt, altToAcc } from "@tonaljs/pitch-note";
+import {
+  accToAlt,
+  altToAcc,
+  arrowsToUps,
+  upsToArrows,
+} from "@tonaljs/pitch-note";
 
 export interface RomanNumeral extends Pitch {
   readonly name: string;
@@ -8,6 +13,7 @@ export interface RomanNumeral extends Pitch {
   readonly roman: string;
   readonly interval: string;
   readonly acc: string;
+  readonly ups: number;
   readonly chordType: string;
   readonly major: boolean;
   readonly dir: 1;
@@ -74,9 +80,14 @@ export function names(major = true) {
 }
 
 function fromPitch(pitch: Pitch): RomanNumeral | NoRomanNumeral {
-  return get(altToAcc(pitch.alt) + NAMES[pitch.step]);
+  return get(
+    upsToArrows(pitch.ups ?? 0) + altToAcc(pitch.alt) + NAMES[pitch.step],
+  );
 }
 
+// Ups and downs go first: "↓III", "↑bVII" ("v" is not accepted as a down,
+// it would clash with the minor numerals v, vi and vii)
+const UPS_REGEX = /^([↑↓^]*)(.*)$/;
 const REGEX =
   /^(#{1,}|b{1,}|x{1,}|)(IV|I{1,3}|VI{0,2}|iv|i{1,3}|vi{0,2})([^IViv]*)$/;
 
@@ -91,11 +102,14 @@ const NAMES = ROMANS.split(" ");
 const NAMES_MINOR = ROMANS.toLowerCase().split(" ");
 
 function parse(src: string): RomanNumeral | NoRomanNumeral {
-  const [name, acc, roman, chordType] = tokenize(src);
+  const [, arrows, plain] = UPS_REGEX.exec(src) as string[];
+  const [plainName, acc, roman, chordType] = tokenize(plain);
   if (!roman) {
     return NO_ROMAN_NUMERAL;
   }
 
+  const ups = arrowsToUps(arrows);
+  const name = upsToArrows(ups) + plainName;
   const upperRoman = roman.toUpperCase();
   const step = NAMES.indexOf(upperRoman);
   const alt = accToAlt(acc);
@@ -104,8 +118,9 @@ function parse(src: string): RomanNumeral | NoRomanNumeral {
     empty: false,
     name,
     roman,
-    interval: interval({ step, alt, dir }).name,
+    interval: interval({ step, alt, dir, ups }).name,
     acc,
+    ups,
     chordType,
     alt,
     step,

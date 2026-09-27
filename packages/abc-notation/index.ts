@@ -53,6 +53,8 @@ export function scientificToAbcNotation(str: string): string {
   if (n.empty || (!n.oct && n.oct !== 0)) {
     return "";
   }
+  // ABC notation has no standard way to write ups and downs
+  if (n.ups) return "";
   const { letter, acc, oct } = n;
   const a = acc[0] === "b" ? acc.replace(/b/g, "_") : acc.replace(/#/g, "^");
   const l = oct > 4 ? letter.toLowerCase() : letter;

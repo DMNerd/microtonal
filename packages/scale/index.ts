@@ -3,7 +3,10 @@
  * - https://www.researchgate.net/publication/327567188_An_Algorithm_for_Spelling_the_Pitches_of_Any_Musical_Scale
  * @module scale
  */
-import { all as chordTypes } from "@tonaljs/chord-type";
+import {
+  all as chordTypes,
+  forEdo as chordTypesForEdo,
+} from "@tonaljs/chord-type";
 import { range as nums, rotate } from "@tonaljs/collection";
 import { enharmonic, fromMidi, sortedUniqNames } from "@tonaljs/note";
 import {
@@ -12,7 +15,9 @@ import {
   isSubsetOf,
   isSupersetOf,
   modes,
+  get as pcset,
 } from "@tonaljs/pcset";
+import { edoChroma, edoSteps } from "@tonaljs/pitch";
 import { tonicIntervalsTransposer, transpose } from "@tonaljs/pitch-distance";
 import { note, NoteName } from "@tonaljs/pitch-note";
 import {
@@ -21,7 +26,29 @@ import {
   ScaleType,
   names as scaleTypeNames,
   all as scaleTypes,
+  forEdo as scaleTypesForEdo,
 } from "@tonaljs/scale-type";
+
+/**
+ * Options for functions that work in any equal division of the octave:
+ * - edo: number of equal divisions of the octave (12 by default)
+ */
+export interface EdoOptions {
+  edo: number;
+}
+
+const edoOf = (options?: Partial<EdoOptions>): number => {
+  const edo = options?.edo;
+  return typeof edo === "number" && Number.isInteger(edo) && edo > 0 ? edo : 12;
+};
+const scaleTypesIn = (edo: number) =>
+  edo === 12 ? scaleTypes() : scaleTypesForEdo(edo);
+const chordTypesIn = (edo: number) =>
+  edo === 12 ? chordTypes() : chordTypesForEdo(edo);
+const scaleChroma = (name: string, edo: number) => {
+  const s = get(name);
+  return edo === 12 || s.empty ? s.chroma : pcset(s.intervals, { edo }).chroma;
+};
 
 type ScaleName = string;
 type ScaleNameTokens = [string, string]; // [TONIC, SCALE TYPE]
@@ -111,11 +138,12 @@ export const scale = get;
 
 export function detect(
   notes: string[],
-  options: { tonic?: string; match?: "exact" | "fit" } = {},
+  options: { tonic?: string; match?: "exact" | "fit"; edo?: number } = {},
 ): string[] {
-  const notesChroma = chroma(notes);
+  const edo = edoOf(options);
+  const notesChroma = chroma(notes, { edo });
   const tonic = note(options.tonic ?? notes[0] ?? "");
-  const tonicChroma = tonic.chroma;
+  const tonicChroma = edo === 12 ? tonic.chroma : edoChroma(tonic, edo);
   if (tonicChroma === undefined) {
     return [];
   }
@@ -123,7 +151,8 @@ export function detect(
   const pitchClasses = notesChroma.split("");
   pitchClasses[tonicChroma] = "1";
   const scaleChroma = rotate(tonicChroma, pitchClasses).join("");
-  const match = all().find((scaleType) => scaleType.chroma === scaleChroma);
+  const types = edo === 12 ? all() : scaleTypesForEdo(edo);
+  const match = types.find((scaleType) => scaleType.chroma === scaleChroma);
 
   const results: string[] = [];
   if (match) {
@@ -133,7 +162,7 @@ export function detect(
     return results;
   }
 
-  extended(scaleChroma).forEach((scaleName) => {
+  extended(scaleChroma, { edo }).forEach((scaleName) => {
     results.push(tonic.name + " " + scaleName);
   });
 
@@ -150,11 +179,14 @@ export function detect(
  * @example
  * scaleChords("pentatonic") // => ["5", "64", "M", "M6", "Madd9", "Msus2"]
  */
-export function scaleChords(name: string): string[] {
-  const s = get(name);
-  const inScale = isSubsetOf(s.chroma);
-  return chordTypes()
-    .filter((chord) => inScale(chord.chroma))
+export function scaleChords(
+  name: string,
+  options?: Partial<EdoOptions>,
+): string[] {
+  const edo = edoOf(options);
+  const inScale = isSubsetOf(pcset(scaleChroma(name, edo), { edo }));
+  return chordTypesIn(edo)
+    .filter((chord) => inScale(chord))
     .map((chord) => chord.aliases[0]);
 }
 /**
@@ -167,11 +199,15 @@ export function scaleChords(name: string): string[] {
  * @example
  * extended("major") // => ["bebop", "bebop dominant", "bebop major", "chromatic", "ichikosucho"]
  */
-export function extended(name: string): string[] {
-  const chroma = isChroma(name) ? name : get(name).chroma;
-  const isSuperset = isSupersetOf(chroma);
-  return scaleTypes()
-    .filter((scale) => isSuperset(scale.chroma))
+export function extended(
+  name: string,
+  options?: Partial<EdoOptions>,
+): string[] {
+  const edo = edoOf(options);
+  const chroma = isChroma(name, edo) ? name : scaleChroma(name, edo);
+  const isSuperset = isSupersetOf(pcset(chroma, { edo }));
+  return scaleTypesIn(edo)
+    .filter((scale) => isSuperset(scale))
     .map((scale) => scale.name);
 }
 
@@ -186,10 +222,11 @@ export function extended(name: string): string[] {
  * @example
  * reduced("major") // => ["ionian pentatonic", "major pentatonic", "ritusen"]
  */
-export function reduced(name: string): string[] {
-  const isSubset = isSubsetOf(get(name).chroma);
-  return scaleTypes()
-    .filter((scale) => isSubset(scale.chroma))
+export function reduced(name: string, options?: Partial<EdoOptions>): string[] {
+  const edo = edoOf(options);
+  const isSubset = isSubsetOf(pcset(scaleChroma(name, edo), { edo }));
+  return scaleTypesIn(edo)
+    .filter((scale) => isSubset(scale))
     .map((scale) => scale.name);
 }
 
@@ -226,19 +263,53 @@ type ScaleMode = [string, string];
  *   ["A", "minor pentatonic"]
  * ]
  */
-export function modeNames(name: string): ScaleMode[] {
+export function modeNames(
+  name: string,
+  options?: Partial<EdoOptions>,
+): ScaleMode[] {
   const s = get(name);
   if (s.empty) {
     return [];
   }
+  const edo = edoOf(options);
+  const nameOf =
+    edo === 12
+      ? (chroma: string) => get(chroma).name
+      : (chroma: string) =>
+          scaleTypesForEdo(edo).find((t) => t.chroma === chroma)?.name;
 
   const tonics = s.tonic ? s.notes : s.intervals;
-  return modes(s.chroma)
+  return modes(pcset(scaleChroma(name, edo), { edo }))
     .map((chroma: string, i: number): ScaleMode => {
-      const modeName = get(chroma).name;
+      const modeName = nameOf(chroma);
       return modeName ? [tonics[i], modeName] : ["", ""];
     })
     .filter((x) => x[0]);
+}
+
+// The note of a pitch class name whose height is `steps` in an EDO
+function placeInOctave(pc: string, steps: number, edo: number) {
+  const n0 = note(pc + "0");
+  if (n0.empty) return undefined;
+  const oct = (steps - edoSteps(n0, edo)) / edo;
+  return Number.isInteger(oct) ? note({ ...n0, oct }).name : undefined;
+}
+
+function getEdoNoteNameOf(scale: string | string[], edo: number) {
+  const names = Array.isArray(scale) ? scaleNotes(scale) : get(scale).notes;
+  const chromas = names.map((name) => edoChroma(note(name), edo));
+
+  // numbers are steps of the edo (C0 = 0)
+  return (noteOrSteps: string | number): string | undefined => {
+    const steps =
+      typeof noteOrSteps === "number"
+        ? noteOrSteps
+        : edoSteps(note(noteOrSteps), edo);
+    if (!Number.isFinite(steps)) return undefined;
+    const position = chromas.indexOf(((steps % edo) + edo) % edo);
+    if (position === -1) return undefined;
+    return placeInOctave(note(names[position]).pc, steps, edo);
+  };
 }
 
 function getNoteNameOf(scale: string | string[]) {
@@ -260,7 +331,22 @@ function getNoteNameOf(scale: string | string[]) {
   };
 }
 
-export function rangeOf(scale: string | string[]) {
+export function rangeOf(
+  scale: string | string[],
+  options?: Partial<EdoOptions>,
+) {
+  const edo = edoOf(options);
+  if (edo !== 12) {
+    const getName = getEdoNoteNameOf(scale, edo);
+    return (fromNote: string, toNote: string) => {
+      const from = edoSteps(note(fromNote), edo);
+      const to = edoSteps(note(toNote), edo);
+      if (!Number.isFinite(from) || !Number.isFinite(to)) return [];
+      return nums(from, to)
+        .map(getName)
+        .filter((x) => x);
+    };
+  }
   const getName = getNoteNameOf(scale);
   return (fromNote: string, toNote: string) => {
     const from = note(fromNote).height;

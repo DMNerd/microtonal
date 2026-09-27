@@ -4,8 +4,11 @@ import {
   Pcset,
   PcsetChroma,
   PcsetNum,
+  projectTypesToEdo,
 } from "@tonaljs/pcset";
+import { interval } from "@tonaljs/pitch-interval";
 import data from "./data";
+import microtonalData from "./microtonal-data";
 
 /**
  * Properties for a scale in the scale dictionary. It's a pitch class set
@@ -28,7 +31,11 @@ export const NoScaleType: ScaleType = {
 type ScaleTypeName = string | PcsetChroma | PcsetNum;
 
 let dictionary: ScaleType[] = [];
+// Scales with ups or downs: kept apart because their 12-EDO sizes clash with
+// traditional scales. See `forEdo`.
+let microtonal: ScaleType[] = [];
 let index: Record<ScaleTypeName, ScaleType> = {};
+let edoCache: Record<number, ScaleType[]> = {};
 
 export function names() {
   return dictionary.map((scale) => scale.name);
@@ -77,7 +84,35 @@ export function keys() {
  */
 export function removeAll() {
   dictionary = [];
+  microtonal = [];
   index = {};
+  edoCache = {};
+}
+
+/**
+ * Return the list of scale types with ups or downs
+ */
+export function allMicrotonal(): ScaleType[] {
+  return microtonal.slice();
+}
+
+/**
+ * Get the scale types of an equal division of the octave (EDO), with their
+ * pitch class set (chroma, setNum, normalized) computed in that EDO.
+ *
+ * Scales whose tones merge in that EDO are left out. Microtonal scales are
+ * only included where an up is smaller than a sharp (17, 22, 24, 31...-EDO)
+ * and when they are not the same set as a traditional scale.
+ *
+ * @example
+ * ScaleType.forEdo(24).find(t => t.name === "rast").chroma
+ * // => "100010010010001000100100"
+ */
+export function forEdo(edo: number): ScaleType[] {
+  if (!edoCache[edo]) {
+    edoCache[edo] = projectTypesToEdo(dictionary, microtonal, edo);
+  }
+  return edoCache[edo].slice();
 }
 
 /**
@@ -92,10 +127,16 @@ export function add(
   aliases: string[] = [],
 ): ScaleType {
   const scale = { ...pcset(intervals), name, intervals, aliases };
-  dictionary.push(scale);
+  edoCache = {};
   index[scale.name] = scale;
-  index[scale.setNum] = scale;
-  index[scale.chroma] = scale;
+  if (intervals.some((ivl) => interval(ivl).ups)) {
+    // only reachable by name: its 12-EDO chroma would shadow another scale
+    microtonal.push(scale);
+  } else {
+    dictionary.push(scale);
+    index[scale.setNum] = scale;
+    index[scale.chroma] = scale;
+  }
   scale.aliases.forEach((alias) => addAlias(scale, alias));
   return scale;
 }
@@ -107,12 +148,17 @@ export function addAlias(scale: ScaleType, alias: string) {
 data.forEach(([ivls, name, ...aliases]: string[]) =>
   add(ivls.split(" "), name, aliases),
 );
+microtonalData.forEach(([ivls, name, ...aliases]: string[]) =>
+  add(ivls.split(" "), name, aliases),
+);
 
 /** @deprecated */
 export default {
   names,
   get,
   all,
+  allMicrotonal,
+  forEdo,
   add,
   removeAll,
   keys,

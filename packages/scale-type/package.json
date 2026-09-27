@@ -16,7 +16,8 @@
   ],
   "types": "dist/index.d.ts",
   "dependencies": {
-    "@tonaljs/pcset": "4.10.1"
+    "@tonaljs/pcset": "4.10.1",
+    "@tonaljs/pitch-interval": "6.1.0"
   },
   "author": "danigb@gmail.com",
   "license": "MIT",

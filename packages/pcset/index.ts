@@ -1,7 +1,14 @@
 import { compact, range, rotate } from "@tonaljs/collection";
-import { NotFound, edoChroma } from "@tonaljs/pitch";
+import { NotFound, edoChroma, edoSharp } from "@tonaljs/pitch";
 import { transpose } from "@tonaljs/pitch-distance";
-import { Interval, IntervalName, interval } from "@tonaljs/pitch-interval";
+import {
+  Interval,
+  IntervalName,
+  edoIntervalNames,
+  interval,
+} from "@tonaljs/pitch-interval";
+
+export { edoIntervalNames };
 import { Note, NoteName, note } from "@tonaljs/pitch-note";
 
 /**
@@ -191,63 +198,6 @@ function chromaToIntervals(chroma: PcsetChroma): IntervalName[] {
   return intervals;
 }
 
-// Interval spellings tried for each step of an EDO, most preferred first:
-// the 12-TET names, then augmented/diminished ones
-const EDO_CANDIDATES = [
-  ...IVLS,
-  "1A",
-  "2A",
-  "3d",
-  "3A",
-  "4d",
-  "4A",
-  "5A",
-  "6d",
-  "6A",
-  "7d",
-  "7A",
-  "2d",
-];
-
-const edoNamesCache: Record<number, IntervalName[]> = {};
-
-/**
- * Name every step of an EDO with an interval (within an octave). The name
- * with the fewest ups or downs wins; then plain qualities (P, M, m) over
- * augmented or diminished; then ups over downs. So, in 24-EDO step 7 (the
- * neutral third) is "↑3m" and in 19-EDO step 1 is "1A".
- *
- * @private
- */
-export function edoIntervalNames(edo: number): IntervalName[] {
-  if (edoNamesCache[edo]) return edoNamesCache[edo];
-  const best: { name: IntervalName; cost: number[] }[] = [];
-  EDO_CANDIDATES.forEach((candidate, order) => {
-    const ivl = interval(candidate);
-    const size = edoChroma(ivl, edo);
-    const plain = /^[PMm]$/.test(ivl.q) ? 0 : 1;
-    for (let step = 0; step < edo; step++) {
-      // ups needed to reach `step` from this interval, the short way round
-      const diff = (((step - size) % edo) + edo) % edo;
-      const ups = diff > edo / 2 ? diff - edo : diff;
-      const cost = [Math.abs(ups), plain, ups < 0 ? 1 : 0, order];
-      const current = best[step];
-      if (!current || compareCosts(cost, current.cost) < 0) {
-        const arrows = ups < 0 ? "↓".repeat(-ups) : "↑".repeat(ups);
-        best[step] = { name: arrows + candidate, cost };
-      }
-    }
-  });
-  return (edoNamesCache[edo] = best.map((b) => b.name));
-}
-
-function compareCosts(a: number[], b: number[]): number {
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) return a[i] - b[i];
-  }
-  return 0;
-}
-
 export function notes(set: Set): NoteName[] {
   return get(set).intervals.map((ivl) => transpose("C", ivl));
 }
@@ -402,6 +352,54 @@ export function filter(set: Set) {
   return (notes: NoteName[]) => {
     return notes.filter(isIncluded);
   };
+}
+
+/**
+ * A dictionary entry (chord type, scale type...) defined by its intervals
+ */
+export interface IntervalSetType extends Pcset {
+  readonly name: string;
+  readonly intervals: IntervalName[];
+}
+
+/**
+ * Project a dictionary of types (like chord or scale types) into an equal
+ * division of the octave. Each type gets the pitch class set of its
+ * intervals in that EDO; everything else (name, intervals spelling, aliases)
+ * is kept.
+ *
+ * - Types whose tones merge in that EDO are left out.
+ * - Microtonal types (with ups or downs) are only included in EDOs where an
+ *   up is smaller than a sharp (edoSharp >= 2), and only when they are not
+ *   the same set as a traditional type. When two of them are the same set,
+ *   the first one wins.
+ *
+ * @private
+ */
+export function projectTypesToEdo<T extends IntervalSetType>(
+  traditional: T[],
+  microtonal: T[],
+  edo: number,
+): T[] {
+  const inEdo = (type: T): T | undefined => {
+    const set = get(type.intervals, { edo });
+    const tones = set.chroma.split("").filter((c) => c === "1").length;
+    if (tones !== type.intervals.length) return undefined;
+    return { ...type, ...set, name: type.name, intervals: type.intervals };
+  };
+
+  const types = traditional.map(inEdo).filter((t) => t) as T[];
+  if (edoSharp(edo) >= 2) {
+    const seen = new globalThis.Set(types.map((t) => t.chroma));
+    microtonal.forEach((type) => {
+      const t = inEdo(type);
+      if (t && !seen.has(t.chroma)) {
+        seen.add(t.chroma);
+        types.push(t);
+      }
+    });
+  }
+  return types;
 }
 
 /** @deprecated */

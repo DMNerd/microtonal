@@ -45,7 +45,10 @@ Work in progress on the `edo-ups-downs` branch.
    [Implemented so far](#implemented-so-far).
 2. **Pitch-class sets and chords** — _done_ (`pcset`, `chord-type`,
    `chord-detect`, `chord`).
-3. **Scales, keys and the rest** of the dependent packages. _Next._
+3. **Scales, keys and the rest** — _done_ (`scale-type`, `scale`,
+   `roman-numeral`, `progression`, `abc-notation`; `key` and `mode` work
+   through transposition). See [Not converted](#not-converted) for what
+   stays 12-TET.
 
 ### Implemented so far
 
@@ -83,6 +86,22 @@ Interval.edoSteps("-5P", 19); // => -11
 The low-level versions live in `@tonaljs/pitch`: `edoSteps(pitch, edo)`,
 `edoChroma(pitch, edo)`, `edoFifth(edo)` (the EDO's best fifth) and
 `edoSharp(edo)` (size of a sharp: 1 in 12/19-EDO, 2 in 24/31-EDO).
+
+**Frequencies and step names.** `Note.edoFreq` tunes a note in any EDO
+(A4 = 440Hz unless you pass another reference), and `Note.fromEdoSteps` names
+an EDO step:
+
+```js
+Note.edoFreq("A↑4", 24); // => 452.89…  (a quarter tone above A4)
+Note.edoFreq("C4", 19, { refNote: "C4", refFreq: 256 }); // => 256
+Note.fromEdoSteps(104, 24); // => "E4"   (C0 = 0)
+Note.fromEdoSteps(103, 24); // => "Eb↑4"
+Note.fromEdoSteps(7, 24, { pitchClass: true }); // => "Eb↑"
+```
+
+Steps are spelled with the simplest name above C (fewest ups and downs), the
+same rule as `Pcset.intervals`; `edoIntervalNames(edo)` in
+`@tonaljs/pitch-interval` gives the whole list.
 
 **Operations keep ups and downs:**
 
@@ -181,6 +200,65 @@ Chord.detect(["C", "E", "G"], { edo: 31 }); // => ["CM", …]
   `"^Ebmaj7"`, `"C(↓3)/E↓"`) and the microtonal chord types:
   `Chord.get("C(↓3)").notes` => `["C", "E↓", "G"]`. Inversions keep their
   ups, and `Chord.transpose("Cm", "↓2M")` => `"D↓m"`.
+
+#### Scales
+
+A microtonal scale dictionary is added, starting with Arabic maqamat
+(ascending forms, from [Maqam World](https://www.maqamworld.com/en/maqam.php)):
+
+| Name   | Intervals                 | Notes (traditional tonic) |
+| ------ | ------------------------- | ------------------------- |
+| rast   | 1P 2M ↓3M 4P 5P 6M ↓7M    | C D E↓ F G A B↓           |
+| bayati | 1P ↓2M 3m 4P 5P 6m 7m     | D E↓ F G A Bb C           |
+| saba   | 1P ↓2M 3m 4d 5P 6m 7m     | D E↓ F Gb A Bb C          |
+| sikah  | 1P ↑2m ↑3m ↑4P 5P ↑6m ↑7m | E↓ F G A B↓ C D           |
+
+They follow the same rules as the microtonal chords: reachable by name
+(`Scale.get("C rast")`, aliases like `"maqam rast"` and `"segah"`), not part
+of `ScaleType.all()` or `Scale.names()`, listed by
+`ScaleType.allMicrotonal()`, and included by `ScaleType.forEdo(edo)` only
+where an up is smaller than a sharp.
+
+`Scale` functions take an `edo` option:
+
+```js
+import { Scale } from "tonal";
+
+Scale.get("E↓ sikah").notes; // => ["E↓", "F", "G", "A", "B↓", "C", "D"]
+Scale.detect(["C", "D", "E↓", "F", "G", "A", "B↓"], { edo: 24 });
+// => ["C rast"]
+Scale.scaleChords("rast", { edo: 24 }); // => [..., "(↓3)", ...]
+Scale.modeNames("C rast", { edo: 24 }); // => [["C", "rast"], ["E↓", "sikah"]]
+Scale.rangeOf("C rast", { edo: 24 })("C4", "C5");
+// => ["C4", "D4", "E↓4", "F4", "G4", "A4", "B↓4", "C5"]
+```
+
+`detect`, `scaleChords`, `extended`, `reduced`, `modeNames` and `rangeOf`
+accept `{ edo }`; without it they behave exactly as upstream. `get`,
+`degrees` and `steps` need no option since they only transpose.
+
+#### Keys, modes, roman numerals and progressions
+
+- `Key` and `Mode` work with upped or downed tonics, since they transpose
+  12-TET patterns: `Key.majorKey("E↓").scale` =>
+  `["E↓", "F#↓", "G#↓", "A↓", "B↓", "C#↓", "D#↓"]`.
+- Roman numerals take ups and downs in front: `RomanNumeral.get("↓III")`
+  has interval `"↓3M"`. Only `↑`, `↓` and `^` are accepted, since `v` is the
+  numeral five. Roman numeral objects get an `ups` property.
+- `Progression.toRomanNumerals("C", ["E↓m"])` => `["↓IIIm"]`, and
+  `fromRomanNumerals("C", ["↓III"])` => `["E↓"]`.
+- `AbcNotation.scientificToAbcNotation` returns `""` for notes with ups or
+  downs (ABC has no standard for them) instead of silently dropping them.
+
+#### Not converted
+
+These stay 12-TET: `midi` and `Note.freq`/`Note.midi` (use `Note.edoFreq`),
+`range` (`Range.chromatic`), `voicing`, `voice-leading` and
+`voicing-dictionary`, `Pcset.chromas()`, the `chroma`/`setNum` fields of
+`Chord.get`, `Scale.get` and the dictionaries (use `forEdo` or
+`Pcset.get(…, { edo })`), and the Greek `mode` dictionary. Chord symbols with
+an upped root followed by a type starting with `b` (`C↓b9sus`) don't parse,
+the same ambiguity upstream has with `Cb9sus`.
 
 #### 12-TET compatibility
 

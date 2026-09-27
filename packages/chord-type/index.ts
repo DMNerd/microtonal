@@ -4,8 +4,8 @@ import {
   Pcset,
   PcsetChroma,
   PcsetNum,
+  projectTypesToEdo,
 } from "@tonaljs/pcset";
-import { edoSharp } from "@tonaljs/pitch";
 import { interval } from "@tonaljs/pitch-interval";
 import data from "./data";
 import microtonalData from "./microtonal-data";
@@ -102,29 +102,10 @@ export function allMicrotonal(): ChordType[] {
  * // => "100000010000001000000000"
  */
 export function forEdo(edo: number): ChordType[] {
-  if (edoCache[edo]) return edoCache[edo].slice();
-
-  const inEdo = (type: ChordType): ChordType | undefined => {
-    const set = pcset(type.intervals, { edo });
-    const tones = set.chroma.split("").filter((c) => c === "1").length;
-    if (tones !== type.intervals.length) return undefined;
-    const { name, quality, aliases, intervals } = type;
-    return { ...set, name, quality, aliases, intervals };
-  };
-
-  const types = dictionary.map(inEdo).filter((t) => t) as ChordType[];
-  if (edoSharp(edo) >= 2) {
-    const seen = new Set(types.map((t) => t.chroma));
-    microtonal.forEach((type) => {
-      const t = inEdo(type);
-      if (t && !seen.has(t.chroma)) {
-        seen.add(t.chroma);
-        types.push(t);
-      }
-    });
+  if (!edoCache[edo]) {
+    edoCache[edo] = projectTypesToEdo(dictionary, microtonal, edo);
   }
-  edoCache[edo] = types;
-  return types.slice();
+  return edoCache[edo].slice();
 }
 
 /**

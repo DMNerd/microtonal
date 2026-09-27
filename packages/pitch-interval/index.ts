@@ -1,6 +1,7 @@
 import {
   coordinates,
   Direction,
+  edoChroma,
   IntervalCoordinates,
   isNamedPitch,
   isPitch,
@@ -234,4 +235,73 @@ function altToQ(type: Type, alt: number): Quality {
   } else {
     return fillStr("d", type === "perfectable" ? alt : alt + 1) as Quality;
   }
+}
+
+// Interval spellings tried for each step of an EDO, most preferred first:
+// the 12-TET names, then augmented/diminished ones
+const EDO_CANDIDATES = [
+  "1P",
+  "2m",
+  "2M",
+  "3m",
+  "3M",
+  "4P",
+  "5d",
+  "5P",
+  "6m",
+  "6M",
+  "7m",
+  "7M",
+  "1A",
+  "2A",
+  "3d",
+  "3A",
+  "4d",
+  "4A",
+  "5A",
+  "6d",
+  "6A",
+  "7d",
+  "7A",
+  "2d",
+];
+
+const edoNamesCache: Record<number, IntervalName[]> = {};
+
+/**
+ * Name every step of an EDO with an interval (within an octave). The name
+ * with the fewest ups or downs wins; then plain qualities (P, M, m) over
+ * augmented or diminished; then ups over downs. So, in 24-EDO step 7 (the
+ * neutral third) is "↑3m" and in 19-EDO step 1 is "1A".
+ *
+ * @example
+ * edoIntervalNames(24)[7] // => "↑3m"
+ */
+export function edoIntervalNames(edo: number): IntervalName[] {
+  if (edoNamesCache[edo]) return edoNamesCache[edo];
+  const best: { name: IntervalName; cost: number[] }[] = [];
+  EDO_CANDIDATES.forEach((candidate, order) => {
+    const ivl = interval(candidate);
+    const size = edoChroma(ivl, edo);
+    const plain = /^[PMm]$/.test(ivl.q) ? 0 : 1;
+    for (let step = 0; step < edo; step++) {
+      // ups needed to reach `step` from this interval, the short way round
+      const diff = (((step - size) % edo) + edo) % edo;
+      const ups = diff > edo / 2 ? diff - edo : diff;
+      const cost = [Math.abs(ups), plain, ups < 0 ? 1 : 0, order];
+      const current = best[step];
+      if (!current || compareCosts(cost, current.cost) < 0) {
+        const arrows = ups < 0 ? "↓".repeat(-ups) : "↑".repeat(ups);
+        best[step] = { name: arrows + candidate, cost };
+      }
+    }
+  });
+  return (edoNamesCache[edo] = best.map((b) => b.name));
+}
+
+function compareCosts(a: number[], b: number[]): number {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return a[i] - b[i];
+  }
+  return 0;
 }

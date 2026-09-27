@@ -6,7 +6,7 @@ import {
   edoSteps as pitchEdoSteps,
 } from "@tonaljs/pitch";
 import { distance as _dist, transpose as _tr } from "@tonaljs/pitch-distance";
-import { IntervalName } from "@tonaljs/pitch-interval";
+import { IntervalName, edoIntervalNames } from "@tonaljs/pitch-interval";
 import {
   Note,
   NoteLiteral,
@@ -114,6 +114,57 @@ export const edoChroma = (note: NoteLiteral, edo = 12): number => {
   const n = get(note);
   return n.empty ? NaN : pitchEdoChroma(n, edo);
 };
+
+/**
+ * Get the frequency of a note in an equal division of the octave.
+ * By default A4 is 440Hz; set `refNote` and `refFreq` to tune differently.
+ * It returns null for pitch classes (notes without octave).
+ *
+ * @example
+ * Note.edoFreq("A4", 24) // => 440
+ * Note.edoFreq("A↑4", 24) // => 452.89... (a quarter tone higher)
+ * Note.edoFreq("C4", 19, { refNote: "C4", refFreq: 256 }) // => 256
+ */
+export function edoFreq(
+  noteName: NoteLiteral,
+  edo = 12,
+  options: { refNote?: NoteLiteral; refFreq?: number } = {},
+): number | null {
+  const n = get(noteName);
+  const ref = get(options.refNote ?? "A4");
+  const refFreq = options.refFreq ?? 440;
+  if (n.empty || n.oct === undefined || ref.empty || ref.oct === undefined) {
+    return null;
+  }
+  const steps = pitchEdoSteps(n, edo) - pitchEdoSteps(ref, edo);
+  return refFreq * Math.pow(2, steps / edo);
+}
+
+/**
+ * Get a note name from its height in steps of an equal division of the
+ * octave (C0 = 0). Each step is spelled with the simplest name above C
+ * (fewest ups and downs, see `Pcset.intervals`).
+ *
+ * @example
+ * Note.fromEdoSteps(104, 24) // => "E4"
+ * Note.fromEdoSteps(103, 24) // => "Eb↑4"
+ * Note.fromEdoSteps(7, 24, { pitchClass: true }) // => "Eb↑"
+ */
+export function fromEdoSteps(
+  steps: number,
+  edo = 12,
+  options: { pitchClass?: boolean } = {},
+): NoteName {
+  if (!Number.isInteger(steps) || !Number.isInteger(edo) || edo < 1) {
+    return "";
+  }
+  const chroma = ((steps % edo) + edo) % edo;
+  const pc = _tr("C", edoIntervalNames(edo)[chroma]);
+  if (options.pitchClass) return pc;
+  const n0 = props(pc + "0");
+  const oct = (steps - pitchEdoSteps(n0, edo)) / edo;
+  return props({ ...n0, oct }).name;
+}
 
 // Apply a 12-TET respelling to the note without its ups/downs, then put them back
 function keepUps(note: Note, respell: (base: Note) => string): string {
@@ -346,6 +397,8 @@ export default {
   chroma,
   edoSteps,
   edoChroma,
+  edoFreq,
+  fromEdoSteps,
   transpose,
   tr,
   transposeBy,

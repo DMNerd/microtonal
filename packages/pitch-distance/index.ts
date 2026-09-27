@@ -29,18 +29,22 @@ export function transpose(
   intervalName: IntervalLiteral | [number, number],
 ): NoteName {
   const note = asNote(noteName);
-  const intervalCoord = Array.isArray(intervalName)
-    ? intervalName
-    : asInterval(intervalName).coord;
+  const ivl = Array.isArray(intervalName)
+    ? undefined
+    : asInterval(intervalName);
+  const intervalCoord = ivl ? ivl.coord : (intervalName as [number, number]);
   if (note.empty || !intervalCoord || intervalCoord.length < 2) {
     return "";
   }
+  // Interval ups are written relative to its direction: "-↑3M" goes down by
+  // an up-major-third, so it lands one step lower than "-3M"
+  const ups = note.ups + (ivl ? ivl.dir * ivl.ups : 0);
   const noteCoord = note.coord;
   const tr: PitchCoordinates =
     noteCoord.length === 1
       ? [noteCoord[0] + intervalCoord[0]]
       : [noteCoord[0] + intervalCoord[0], noteCoord[1] + intervalCoord[1]];
-  return coordToNote(tr).name;
+  return coordToNote(tr, ups).name;
 }
 
 // Private
@@ -95,5 +99,6 @@ export function distance(
     to.midi !== null &&
     from.oct === to.oct &&
     from.step > to.step;
-  return coordToInterval([fifths, octs], forceDescending).name;
+  return coordToInterval([fifths, octs], forceDescending, to.ups - from.ups)
+    .name;
 }

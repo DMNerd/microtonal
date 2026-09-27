@@ -1,4 +1,8 @@
-import { IntervalCoordinates, NoteCoordinates } from "@tonaljs/pitch";
+import {
+  IntervalCoordinates,
+  NoteCoordinates,
+  edoSteps as pitchEdoSteps,
+} from "@tonaljs/pitch";
 import { distance as dist } from "@tonaljs/pitch-distance";
 import {
   IntervalName,
@@ -73,7 +77,10 @@ export const num = (name: string) => props(name).num;
  */
 export function simplify(name: IntervalName): IntervalName {
   const i = props(name);
-  return i.empty ? "" : i.simple + i.q;
+  if (i.empty) return "";
+  // Ups and downs are kept: simplify("↓10M") => "↓3M"
+  const arrows = i.ups < 0 ? "↓".repeat(-i.ups) : "↑".repeat(i.ups);
+  return (i.simple < 0 ? "-" : "") + arrows + Math.abs(i.simple) + i.q;
 }
 
 /**
@@ -96,7 +103,8 @@ export function invert(name: IntervalName): IntervalName {
   }
   const step = (7 - i.step) % 7;
   const alt = i.type === "perfectable" ? -i.alt : -(i.alt + 1);
-  return props({ step, alt, oct: i.oct, dir: i.dir }).name;
+  // Ups flip too: invert("↓3M") => "↑6m"
+  return props({ step, alt, oct: i.oct, dir: i.dir, ups: -i.ups }).name;
 }
 
 // interval numbers
@@ -140,7 +148,10 @@ export const distance = dist;
  * @example
  * Interval.add("3m", "5P") // => "7m"
  */
-export const add = combinator((a, b) => [a[0] + b[0], a[1] + b[1]]);
+export const add = combinator(
+  (a, b) => [a[0] + b[0], a[1] + b[1]],
+  (a, b) => a + b,
+);
 
 /**
  * Returns a function that adds an interval
@@ -163,7 +174,10 @@ export const addTo = (interval: string) => (other: string) =>
  * Interval.subtract('5P', '3M') // => '3m'
  * Interval.subtract('3M', '5P') // => '-3m'
  */
-export const subtract = combinator((a, b) => [a[0] - b[0], a[1] - b[1]]);
+export const subtract = combinator(
+  (a, b) => [a[0] - b[0], a[1] - b[1]],
+  (a, b) => a - b,
+);
 
 export function transposeFifths(
   interval: IntervalName,
@@ -173,7 +187,25 @@ export function transposeFifths(
   if (ivl.empty) return "";
 
   const [nFifths, nOcts, dir] = ivl.coord;
-  return coordToInterval([nFifths + fifths, nOcts, dir]).name;
+  return coordToInterval(
+    [nFifths + fifths, nOcts, dir],
+    false,
+    ivl.dir * ivl.ups,
+  ).name;
+}
+
+/**
+ * Get the (signed) size of an interval in steps of an equal division of the
+ * octave. Ups and downs are one step each.
+ *
+ * @example
+ * Interval.edoSteps("3M", 24) // => 8
+ * Interval.edoSteps("↓3M", 24) // => 7 (neutral third)
+ * Interval.edoSteps("-5P", 19) // => -11
+ */
+export function edoSteps(interval: IntervalName, edo = 12): number {
+  const ivl = get(interval);
+  return ivl.empty ? NaN : pitchEdoSteps(ivl, edo);
 }
 
 /** @deprecated */
@@ -192,6 +224,7 @@ export default {
   addTo,
   subtract,
   transposeFifths,
+  edoSteps,
 };
 
 //// PRIVATE ////
@@ -201,13 +234,17 @@ type Operation = (
   b: IntervalCoordinates,
 ) => NoteCoordinates;
 
-function combinator(fn: Operation) {
+function combinator(fn: Operation, upsFn: (a: number, b: number) => number) {
   return (a: IntervalName, b: IntervalName): IntervalName | undefined => {
-    const coordA = props(a).coord;
-    const coordB = props(b).coord;
+    const ivlA = props(a);
+    const ivlB = props(b);
+    const coordA = ivlA.coord;
+    const coordB = ivlB.coord;
     if (coordA && coordB) {
       const coord = fn(coordA, coordB);
-      return coordToInterval(coord).name;
+      // signed ups: "-↑3M" contributes -1
+      const ups = upsFn(ivlA.dir * ivlA.ups || 0, ivlB.dir * ivlB.ups || 0);
+      return coordToInterval(coord, false, ups).name;
     }
   };
 }

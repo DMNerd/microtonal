@@ -19,6 +19,7 @@ describe("note", () => {
         name: "A4",
         letter: "A",
         acc: "",
+        ups: 0,
         pc: "A",
         step: 5,
         alt: 0,

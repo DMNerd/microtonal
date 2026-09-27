@@ -20,6 +20,7 @@ describe("interval", () => {
         dir: 1,
         coord: [-8, 5],
         oct: 0,
+        ups: 0,
         semitones: 4,
         simple: 4,
         step: 3,

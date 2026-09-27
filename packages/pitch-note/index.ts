@@ -20,6 +20,7 @@ export interface Note extends Pitch, NamedPitch {
   readonly name: NoteName;
   readonly letter: string;
   readonly acc: string;
+  readonly ups: number;
   readonly pc: PcName;
   readonly chroma: number;
   readonly height: number;
@@ -35,6 +36,7 @@ const NoNote: Note = Object.freeze({
   name: "",
   letter: "",
   acc: "",
+  ups: NaN,
   pc: "",
   step: NaN,
   alt: NaN,
@@ -52,6 +54,20 @@ export const altToAcc = (alt: number): string =>
   alt < 0 ? fillStr("b", -alt) : fillStr("#", alt);
 export const accToAlt = (acc: string): number =>
   acc[0] === "b" ? -acc.length : acc.length;
+export const upsToArrows = (ups: number): string =>
+  ups < 0 ? fillStr("↓", -ups) : fillStr("↑", ups);
+/**
+ * Count ups minus downs in a string of ups/downs markers:
+ * "↑" or "^" is an up, "↓" or "v" is a down.
+ */
+export const arrowsToUps = (arrows: string): number => {
+  let ups = 0;
+  for (const ch of arrows) {
+    if (ch === "↑" || ch === "^") ups += 1;
+    else if (ch === "↓" || ch === "v") ups -= 1;
+  }
+  return ups;
+};
 
 /**
  * Given a note literal (a note name or a note object), returns the Note object
@@ -92,17 +108,38 @@ export function tokenizeNote(str: string): NoteTokens {
     : ["", "", "", ""];
 }
 
+// Ups and downs go before the note (Kite's "^C", "vEb4", or with arrows) or
+// right after the accidentals ("C↑", "Eb↓4" — the canonical spelling).
+// Accidentals must come before the suffix arrows ("C↑#" is not a note).
+const UPS_REGEX = /^([\^v↑↓]*)([a-gA-G](?:#+|b+|x+)?)([↑↓]*)(?![#bx])(.*)$/;
+
+/**
+ * Split the ups/downs markers from a note name.
+ * Returns the net number of ups and the name without the markers.
+ *
+ * @private
+ */
+export function tokenizeUps(str: string): [number, string] {
+  const m = UPS_REGEX.exec(str);
+  if (!m || (m[1] === "" && m[3] === "")) {
+    return [0, str];
+  }
+  return [arrowsToUps(m[1] + m[3]), m[2] + m[4]];
+}
+
 /**
  * @private
  */
-export function coordToNote(noteCoord: PitchCoordinates): Note {
-  return note(pitch(noteCoord)) as Note;
+export function coordToNote(noteCoord: PitchCoordinates, ups = 0): Note {
+  const p = pitch(noteCoord);
+  return note(ups ? { ...p, ups } : p) as Note;
 }
 
 const mod = (n: number, m: number) => ((n % m) + m) % m;
 
 const SEMI = [0, 2, 4, 5, 7, 9, 11];
-function parse(noteName: NoteName): Note {
+function parse(fullName: NoteName): Note {
+  const [ups, noteName] = tokenizeUps(fullName);
   const tokens = tokenizeNote(noteName);
   if (tokens[0] === "" || tokens[3] !== "") {
     return NoNote;
@@ -117,13 +154,14 @@ function parse(noteName: NoteName): Note {
   const oct = octStr.length ? +octStr : undefined;
   const coord = coordinates({ step, alt, oct });
 
-  const name = letter + acc + octStr;
-  const pc = letter + acc;
-  const chroma = (SEMI[step] + alt + 120) % 12;
+  const arrows = upsToArrows(ups);
+  const name = letter + acc + arrows + octStr;
+  const pc = letter + acc + arrows;
+  const chroma = mod(SEMI[step] + alt + ups, 12);
   const height =
     oct === undefined
-      ? mod(SEMI[step] + alt, 12) - 12 * 99
-      : SEMI[step] + alt + 12 * (oct + 1);
+      ? mod(SEMI[step] + alt + ups, 12) - 12 * 99
+      : SEMI[step] + alt + ups + 12 * (oct + 1);
   const midi = height >= 0 && height <= 127 ? height : null;
   const freq = oct === undefined ? null : Math.pow(2, (height - 69) / 12) * 440;
 
@@ -141,16 +179,17 @@ function parse(noteName: NoteName): Note {
     oct,
     pc,
     step,
+    ups,
   };
 }
 
 function pitchName(props: Pitch): NoteName {
-  const { step, alt, oct } = props;
+  const { step, alt, oct, ups = 0 } = props;
   const letter = stepToLetter(step);
   if (!letter) {
     return "";
   }
 
-  const pc = letter + altToAcc(alt);
+  const pc = letter + altToAcc(alt) + upsToArrows(ups);
   return oct || oct === 0 ? pc + oct : pc;
 }

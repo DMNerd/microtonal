@@ -38,15 +38,69 @@ one step down).
 
 ## Status
 
-Work in progress on the `edo-ups-downs` branch. Planned stages:
+Work in progress on the `edo-ups-downs` branch.
 
-1. **Core pitch model** (`pitch`, `pitch-note`, `pitch-interval`,
-   `pitch-distance`): parse and spell notes and intervals with ups/downs, EDO
-   step and chroma math, EDO-aware transposition and distance. _In progress._
+1. **Core pitch model** — _done_ (`pitch`, `pitch-note`, `pitch-interval`,
+   `pitch-distance`, plus the `note` and `interval` helpers). See
+   [Implemented so far](#implemented-so-far).
 2. **Pitch-class sets and chords** (`pcset`, `chord-type`, `chord-detect`,
    `chord`): N-EDO pitch-class sets, microtonal chord types, chord detection in
-   any EDO.
+   any EDO. _Next._
 3. **Scales, keys and the rest** of the dependent packages.
+
+### Implemented so far
+
+**Ups and downs in names.** Notes and intervals accept ups/downs; names are
+always written back with arrows (after the accidentals for notes, before the
+number for intervals):
+
+```js
+import { Interval, Note } from "tonal";
+
+Note.get("^C#4").name; // => "C#↑4"   (Kite's ASCII prefix also accepted)
+Note.get("vEb").name; // => "Eb↓"
+Note.get("E↓4").ups; // => -1
+Interval.get("vM3").name; // => "↓3M"
+Interval.get("-↑5P").name; // => "-↑5P"
+```
+
+A new `ups` property (`0` when there are none) is added to `Note` and
+`Interval` objects and to the `Pitch` type. The fifths/octaves `coord` is
+unchanged, so it still describes the unmarked note.
+
+**Sizes in any EDO.** New functions give sizes in steps of N-EDO; ups and
+downs are one step each:
+
+```js
+Note.edoSteps("E4", 24); // => 104   (C0 = 0)
+Note.edoChroma("E↓", 24); // => 7    (quarter-tone below E)
+Note.edoChroma("F#", 19); // => 9
+Interval.edoSteps("↓3M", 24); // => 7  (neutral third)
+Interval.edoSteps("-5P", 19); // => -11
+```
+
+The low-level versions live in `@tonaljs/pitch`: `edoSteps(pitch, edo)`,
+`edoChroma(pitch, edo)`, `edoFifth(edo)` (the EDO's best fifth) and
+`edoSharp(edo)` (size of a sharp: 1 in 12/19-EDO, 2 in 24/31-EDO).
+
+**Operations keep ups and downs:**
+
+- `Note.transpose` / `Interval.distance` — `transpose("C4", "↓3M")` =>
+  `"E↓4"`, `distance("C↑", "G")` => `"↓5P"`. A descending interval's ups
+  count against its direction: `transpose("C4", "-↑3M")` => `"Ab↓3"`.
+- `Note.transposeFifths`, `Note.transposeOctaves`,
+  `Interval.transposeFifths`.
+- `Interval.add` / `subtract` — `add("↓3M", "3m")` => `"↓5P"`.
+- `Interval.invert` flips them — `invert("↓3M")` => `"↑6m"`.
+- `Interval.simplify` — `simplify("↓10M")` => `"↓3M"`.
+- `Note.simplify` / `Note.enharmonic` respell the note in 12-TET and keep
+  the ups: `simplify("C##↑")` => `"D↑"`. These respellings assume C## = D,
+  which holds in 12- and 24-EDO but not in every EDO (in 19-EDO C## ≠ D).
+
+**12-TET compatibility.** Every upstream test still passes unchanged (except
+for the added `ups: 0` field in property snapshots). Legacy properties such as
+`chroma`, `midi`, `height`, `semitones` and `freq` stay 12-TET; they treat an
+up or down as one semitone, which is its size in 12-EDO.
 
 Until the fork is published, packages keep their `@tonaljs/*` names, and the
 install instructions below still refer to upstream Tonal. Use this repository

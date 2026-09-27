@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { freqToMidi, midiToNoteName } from "@tonaljs/midi";
-import { Pitch } from "@tonaljs/pitch";
+import {
+  Pitch,
+  edoChroma as pitchEdoChroma,
+  edoSteps as pitchEdoSteps,
+} from "@tonaljs/pitch";
 import { distance as _dist, transpose as _tr } from "@tonaljs/pitch-distance";
 import { IntervalName } from "@tonaljs/pitch-interval";
 import {
@@ -84,6 +88,40 @@ export const freq = (note: NoteLiteral) => get(note).freq;
  * @function
  */
 export const chroma = (note: NoteLiteral) => get(note).chroma;
+
+/**
+ * Get the note height in steps of an equal division of the octave (C0 = 0),
+ * or the steps above C for pitch classes. Ups and downs are one step each.
+ *
+ * @example
+ * Note.edoSteps("E4", 24) // => 104
+ * Note.edoSteps("E↓", 24) // => 7
+ */
+export const edoSteps = (note: NoteLiteral, edo = 12): number => {
+  const n = get(note);
+  return n.empty ? NaN : pitchEdoSteps(n, edo);
+};
+
+/**
+ * Get the note chroma (pitch class, 0 to edo - 1) in an equal division of
+ * the octave.
+ *
+ * @example
+ * Note.edoChroma("E↓", 24) // => 7
+ * Note.edoChroma("F#", 19) // => 9
+ */
+export const edoChroma = (note: NoteLiteral, edo = 12): number => {
+  const n = get(note);
+  return n.empty ? NaN : pitchEdoChroma(n, edo);
+};
+
+// Apply a 12-TET respelling to the note without its ups/downs, then put them back
+function keepUps(note: Note, respell: (base: Note) => string): string {
+  if (!note.ups) return respell(note);
+  const base = props({ step: note.step, alt: note.alt, oct: note.oct });
+  const spelled = props(respell(base));
+  return spelled.empty ? "" : props({ ...spelled, ups: note.ups }).name;
+}
 
 /**
  * Given a midi number, returns a note name. Uses flats for altered notes.
@@ -222,10 +260,13 @@ export const simplify = (noteName: NoteName | Pitch): string => {
   if (note.empty) {
     return "";
   }
-  return midiToNoteName(note.midi || note.chroma, {
-    sharps: note.alt > 0,
-    pitchClass: note.midi === null,
-  });
+  // Ups and downs are kept: simplify("C##↑") => "D↑"
+  return keepUps(note, (base) =>
+    midiToNoteName(base.midi || base.chroma, {
+      sharps: base.alt > 0,
+      pitchClass: base.midi === null,
+    }),
+  );
 };
 /**
  * Get enharmonic of a note
@@ -240,10 +281,14 @@ export const simplify = (noteName: NoteName | Pitch): string => {
  * Note.enharmonic("F2","E#") // => "E#2"
  * Note.enharmonic("C##b"); // => ""
  */
-export function enharmonic(noteName: string, destName?: string) {
+export function enharmonic(noteName: string, destName?: string): string {
   const src = get(noteName);
   if (src.empty) {
     return "";
+  }
+  // Without a destination, ups and downs are kept: enharmonic("Db↓") => "C#↓"
+  if (src.ups && !destName) {
+    return keepUps(src, (base) => enharmonic(base.name));
   }
 
   // destination: use given or generate one
@@ -299,6 +344,8 @@ export default {
   fromFreq,
   fromFreqSharps,
   chroma,
+  edoSteps,
+  edoChroma,
   transpose,
   tr,
   transposeBy,

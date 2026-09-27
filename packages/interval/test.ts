@@ -14,6 +14,7 @@ describe("@tonaljs/interval", () => {
       name: "4P",
       num: 4,
       oct: 0,
+      ups: 0,
       q: "P",
       semitones: 5,
       simple: 4,

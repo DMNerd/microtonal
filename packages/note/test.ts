@@ -19,6 +19,7 @@ describe("note", () => {
       oct: 4,
       pc: "C",
       step: 0,
+      ups: 0,
     });
     expect(Note.get("C4")).toEqual(Note.get(Note.get("C4")));
   });

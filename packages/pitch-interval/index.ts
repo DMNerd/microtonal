@@ -10,8 +10,6 @@ import {
   PitchCoordinates,
 } from "@tonaljs/pitch";
 
-const fillStr = (s: string, n: number) => Array(Math.abs(n) + 1).join(s);
-
 export type IntervalName = string;
 export type IntervalLiteral = IntervalName | Pitch | NamedPitch;
 
@@ -33,6 +31,8 @@ export interface Interval extends Pitch, NamedPitch {
   readonly chroma: number;
   readonly coord: IntervalCoordinates;
   readonly oct: number;
+  /** Ups (positive) or downs (negative), as written: "-↑3M" has ups 1. */
+  readonly ups: number;
 }
 
 export type IntervalType = Interval;
@@ -51,6 +51,7 @@ const NoInterval: Interval = Object.freeze({
   chroma: NaN,
   coord: [] as unknown as IntervalCoordinates,
   oct: NaN,
+  ups: NaN,
 });
 
 // shorthand tonal notation (with quality after number)
@@ -62,6 +63,32 @@ const REGEX = new RegExp(
 );
 
 type IntervalTokens = [string, string];
+
+// Ups/downs markers go first, or right after the sign: "↑3M", "-↓5P", "^M3"
+const UPS_REGEX = /^([-+]?)([\^v↑↓]+)(.*)$/;
+
+const fillStr = (s: string, n: number) => Array(Math.abs(n) + 1).join(s);
+const upsToArrows = (ups: number): string =>
+  ups < 0 ? fillStr("↓", -ups) : fillStr("↑", ups);
+const arrowsToUps = (arrows: string): number => {
+  let ups = 0;
+  for (const ch of arrows) {
+    if (ch === "↑" || ch === "^") ups += 1;
+    else if (ch === "↓" || ch === "v") ups -= 1;
+  }
+  return ups;
+};
+
+/**
+ * Split the ups/downs markers from an interval name.
+ * Returns the net number of ups and the name without the markers.
+ *
+ * @private
+ */
+export function tokenizeIntervalUps(str: string): [number, string] {
+  const m = UPS_REGEX.exec(str);
+  return m ? [arrowsToUps(m[2]), m[1] + m[3]] : [0, str];
+}
 
 /**
  * @private
@@ -108,7 +135,8 @@ export function interval(src: IntervalLiteral): Interval {
 
 const SIZES = [0, 2, 4, 5, 7, 9, 11];
 const TYPES = "PMMPPMM";
-function parse(str?: string): Interval {
+function parse(fullStr?: string): Interval {
+  const [ups, str] = tokenizeIntervalUps(`${fullStr}`);
   const tokens = tokenizeInterval(str);
   if (tokens[0] === "") {
     return NoInterval;
@@ -122,13 +150,13 @@ function parse(str?: string): Interval {
   }
   const type = t === "M" ? "majorable" : "perfectable";
 
-  const name = "" + num + q;
   const dir = num < 0 ? -1 : 1;
+  const name = (dir < 0 ? "-" : "") + upsToArrows(ups) + Math.abs(num) + q;
   const simple = num === 8 || num === -8 ? num : dir * (step + 1);
   const alt = qToAlt(type, q);
   const oct = Math.floor((Math.abs(num) - 1) / 7);
-  const semitones = dir * (SIZES[step] + alt + 12 * oct);
-  const chroma = (((dir * (SIZES[step] + alt)) % 12) + 12) % 12;
+  const semitones = dir * (SIZES[step] + alt + ups + 12 * oct);
+  const chroma = (((dir * (SIZES[step] + alt + ups)) % 12) + 12) % 12;
   const coord = coordinates({ step, alt, oct, dir }) as IntervalCoordinates;
   return {
     empty: false,
@@ -144,6 +172,7 @@ function parse(str?: string): Interval {
     chroma,
     coord,
     oct,
+    ups,
   };
 }
 
@@ -155,12 +184,16 @@ function parse(str?: string): Interval {
 export function coordToInterval(
   coord: PitchCoordinates,
   forceDescending?: boolean,
+  ups = 0,
 ): Interval {
   const [f, o = 0] = coord;
   const isDescending = f * 7 + o * 12 < 0;
   const ivl: IntervalCoordinates =
     forceDescending || isDescending ? [-f, -o, -1] : [f, o, 1];
-  return interval(pitch(ivl)) as Interval;
+  const p = pitch(ivl);
+  // `ups` is the signed size change; names spell it relative to direction
+  const writtenUps = ups * ivl[2];
+  return interval(writtenUps ? { ...p, ups: writtenUps } : p) as Interval;
 }
 
 function qToAlt(type: Type, q: string): number {
@@ -178,7 +211,7 @@ function qToAlt(type: Type, q: string): number {
 
 // return the interval name of a pitch
 function pitchName(props: Pitch): string {
-  const { step, alt, oct = 0, dir } = props;
+  const { step, alt, oct = 0, dir, ups = 0 } = props;
   if (!dir) {
     return "";
   }
@@ -187,7 +220,7 @@ function pitchName(props: Pitch): string {
   const num = calcNum === 0 ? step + 1 : calcNum;
   const d = dir < 0 ? "-" : "";
   const type = TYPES[step] === "M" ? "majorable" : "perfectable";
-  const name = d + num + altToQ(type, alt);
+  const name = d + upsToArrows(ups) + num + altToQ(type, alt);
   return name;
 }
 

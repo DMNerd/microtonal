@@ -38,19 +38,24 @@ export type PitchCoordinates =
  * - {number} alt - Number of alterations: -2 = 'bb', -1 = 'b', 0 = '', 1 = '#', ...
  * - {number} [oct] = The octave (undefined when is a coord class)
  * - {number} [dir] = Interval direction (undefined when is not an interval)
+ * - {number} [ups] = Ups (positive) or downs (negative): each one raises or
+ *   lowers the pitch by a single step of the equal division in use
+ *   (ups and downs notation). Undefined means 0.
  */
 export interface Pitch {
   readonly step: number;
   readonly alt: number;
   readonly oct?: number; // undefined for pitch classes
   readonly dir?: Direction; // undefined for notes
+  readonly ups?: number; // undefined means no ups or downs
 }
 
 const SIZES = [0, 2, 4, 5, 7, 9, 11];
-export const chroma = ({ step, alt }: Pitch) => (SIZES[step] + alt + 120) % 12;
+export const chroma = ({ step, alt, ups = 0 }: Pitch) =>
+  (((SIZES[step] + alt + ups) % 12) + 12) % 12;
 
-export const height = ({ step, alt, oct, dir = 1 }: Pitch) =>
-  dir * (SIZES[step] + alt + 12 * (oct === undefined ? -100 : oct));
+export const height = ({ step, alt, oct, dir = 1, ups = 0 }: Pitch) =>
+  dir * (SIZES[step] + alt + ups + 12 * (oct === undefined ? -100 : oct));
 
 export const midi = (pitch: Pitch) => {
   const h = height(pitch);
@@ -114,4 +119,45 @@ export function pitch(coord: PitchCoordinates): Pitch {
 function unaltered(f: number): number {
   const i = (f + 1) % 7;
   return i < 0 ? 7 + i : i;
+}
+
+const mod = (n: number, m: number) => ((n % m) + m) % m;
+
+/**
+ * Size of the fifth, in steps, of an equal division of the octave (EDO).
+ * It uses the closest approximation to a just 3/2 (the "patent" fifth), so
+ * 12 => 7, 19 => 11, 24 => 14, 31 => 18
+ */
+export function edoFifth(edo: number): number {
+  return Math.round(edo * Math.log2(3 / 2));
+}
+
+/**
+ * Size, in steps, of a sharp (the chromatic semitone: seven fifths up, four
+ * octaves down) in an EDO. 12 => 1, 19 => 1, 24 => 2, 31 => 2
+ */
+export function edoSharp(edo: number): number {
+  return 7 * edoFifth(edo) - 4 * edo;
+}
+
+/**
+ * Signed size of a pitch, in steps of the given EDO. For notes with octave
+ * it is the absolute height (C0 = 0), for pitch classes it's the distance
+ * above C, and for intervals the (directed) size.
+ *
+ * In 12-EDO this equals `height` for notes and `semitones` for intervals.
+ */
+export function edoSteps(pitch: Pitch, edo = 12): number {
+  const [f, o = 0] = coordinates(pitch);
+  const ups = (pitch.dir ?? 1) * (pitch.ups ?? 0);
+  const steps = f * edoFifth(edo) + o * edo + ups;
+  // pitch classes have no octave: reduce to 0..edo-1 above C
+  return pitch.oct === undefined ? mod(steps, edo) : steps;
+}
+
+/**
+ * Pitch class of a pitch in an EDO: a number between 0 and edo - 1
+ */
+export function edoChroma(pitch: Pitch, edo = 12): number {
+  return mod(edoSteps(pitch, edo), edo);
 }

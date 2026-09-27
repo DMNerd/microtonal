@@ -45,6 +45,7 @@ exports[`tonal > Modules exports functions 1`] = `
     "names",
     "removeAll",
     "symbols",
+    "tier",
   ],
   "ChordType": [
     "add",
@@ -59,6 +60,7 @@ exports[`tonal > Modules exports functions 1`] = `
     "names",
     "removeAll",
     "symbols",
+    "tier",
   ],
   "Collection": [
     "compact",

@@ -1,4 +1,4 @@
-import { all, ChordType, forEdo } from "@tonaljs/chord-type";
+import { all, ChordType, forEdo, tier } from "@tonaljs/chord-type";
 import { get as pcset, modes } from "@tonaljs/pcset";
 import { edoChroma, edoFifth } from "@tonaljs/pitch";
 import { interval } from "@tonaljs/pitch-interval";
@@ -7,6 +7,8 @@ import { note } from "@tonaljs/pitch-note";
 interface FoundChord {
   readonly weight: number;
   readonly name: string;
+  // lower is better: the chord type tier, plus 0.5 for inversions
+  readonly rank: number;
 }
 
 const namedSet = (notes: string[], edo: number) => {
@@ -35,7 +37,12 @@ type DetectOptions = {
 /**
  * Find the chord names that match a list of notes.
  * The first note is taken as the bass: chords rooted elsewhere are returned
- * as slash chords with half the weight, after the root position ones.
+ * as slash chords.
+ *
+ * Results are ranked by how common the chord type is (see `ChordType.tier`),
+ * with half a tier of penalty for inversions. So an inversion of a common
+ * chord comes before a rare chord in root position: E C G is "CM/E" before
+ * "Em#5". (Upstream Tonal puts every root position chord first.)
  *
  * @example
  * detect(["D", "F#", "A", "C"]) // => ["D7"]
@@ -54,7 +61,7 @@ export function detect(
 
   return found
     .filter((chord) => chord.weight)
-    .sort((a, b) => b.weight - a.weight)
+    .sort((a, b) => a.rank - b.rank)
     .map((chord) => chord.name);
 }
 
@@ -146,13 +153,19 @@ function findMatches(
       const chordName = chordType.aliases[0];
       const baseNote = noteName(index);
       const isInversion = index !== tonicChroma;
+      const typeTier = tier(chordType);
       if (isInversion) {
         found.push({
           weight: 0.5 * weight,
           name: `${baseNote}${chordName}/${tonic}`,
+          rank: typeTier + 0.5,
         });
       } else {
-        found.push({ weight: 1 * weight, name: `${baseNote}${chordName}` });
+        found.push({
+          weight: 1 * weight,
+          name: `${baseNote}${chordName}`,
+          rank: typeTier,
+        });
       }
     });
   });

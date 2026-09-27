@@ -34,6 +34,8 @@ let dictionary: ChordType[] = [];
 let microtonal: ChordType[] = [];
 let index: Record<ChordTypeName, ChordType> = {};
 let edoCache: Record<number, ChordType[]> = {};
+// How established each chord type is, by interval spelling. See `tier`.
+let tiers: Record<string, number> = {};
 
 /**
  * Given a chord name or chroma, return the chord properties
@@ -116,6 +118,24 @@ export function removeAll() {
   microtonal = [];
   index = {};
   edoCache = {};
+  tiers = {};
+}
+
+/**
+ * How established a chord type is, used to rank chord detection results:
+ *
+ * - 0: core chords (the named major, minor, diminished, dominant and
+ *   suspended chords of the dictionary, and the microtonal chords)
+ * - 1: other named chords (fifth, augmented, minor augmented...) and chords
+ *   added with `add`
+ * - 2: legacy chords (the unnamed ones, like "7no5" or "Madd9")
+ *
+ * @example
+ * ChordType.tier(ChordType.get("major")) // => 0
+ * ChordType.tier(ChordType.get("m#5")) // => 1
+ */
+export function tier(type: Pick<ChordType, "intervals">): number {
+  return tiers[type.intervals.join(" ")] ?? 1;
 }
 
 /**
@@ -168,13 +188,24 @@ function getQuality(intervals: string[]): ChordQuality {
           : "Unknown";
 }
 
-data.forEach(([ivls, fullName, names]: string[]) =>
-  add(ivls.split(" "), names.split(" "), fullName),
-);
+// The named chords of the dictionary's "Other" section: named, but less
+// common than the core chords.
+const OTHER_CHORDS = [
+  "fifth",
+  "augmented",
+  "minor augmented",
+  "augmented seventh",
+  "major sharp eleventh (lydian)",
+];
+data.forEach(([ivls, fullName, names]: string[]) => {
+  add(ivls.split(" "), names.split(" "), fullName);
+  tiers[ivls] = !fullName ? 2 : OTHER_CHORDS.includes(fullName) ? 1 : 0;
+});
 dictionary.sort((a, b) => a.setNum - b.setNum);
-microtonalData.forEach(([ivls, fullName, names]: string[]) =>
-  add(ivls.split(" "), names.split(" "), fullName),
-);
+microtonalData.forEach(([ivls, fullName, names]: string[]) => {
+  add(ivls.split(" "), names.split(" "), fullName);
+  tiers[ivls] = 0;
+});
 
 /** @deprecated */
 export default {
@@ -184,6 +215,7 @@ export default {
   all,
   allMicrotonal,
   forEdo,
+  tier,
   add,
   removeAll,
   keys,

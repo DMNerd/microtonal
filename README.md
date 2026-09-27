@@ -201,6 +201,24 @@ Chord.detect(["C", "E", "G"], { edo: 31 }); // => ["CM", …]
   `Chord.get("C(↓3)").notes` => `["C", "E↓", "G"]`. Inversions keep their
   ups, and `Chord.transpose("Cm", "↓2M")` => `"D↓m"`.
 
+**Detection ranking (changed from upstream).** Upstream Tonal lists every
+chord rooted on the bass before any inversion, so a plain first-inversion C
+major, `detect(["E", "C", "G"])`, came out as `["Em#5", "CM/E"]`. The fork
+ranks by how common the chord type is, with half a step of penalty for an
+inversion, and now returns `["CM/E", "Em#5"]`.
+
+`ChordType.tier(type)` gives the ranking tier, taken from the sections of
+Tonal's own chord list:
+
+- 0: the named major, minor, diminished, dominant and suspended chords, and
+  the microtonal chords
+- 1: the other named chords (`5`, `aug`, `m#5`, `maj7#5`, `maj9#11`) and
+  chords added with `ChordType.add`
+- 2: the unnamed "legacy" chords (`7no5`, `Madd9`, `7#5`…)
+
+Results sort by tier, plus 0.5 for inversions; ties keep upstream's order. No
+upstream test changed: they only cover cases where both orders agree.
+
 #### Scales
 
 A microtonal scale dictionary is added, starting with Arabic maqamat
@@ -267,6 +285,16 @@ and `edo: 12` fields to expected property objects and snapshots. Legacy
 properties such as `chroma`, `midi`, `height`, `semitones` and `freq` stay
 12-TET; they treat an up or down as one semitone, which is its size in
 12-EDO.
+
+#### Deliberate differences from upstream
+
+Behaviour that changes even for plain 12-TET input:
+
+- **Chord detection ranking**: common chords in inversion come before rare
+  chords in root position (`E C G` => `CM/E` first, upstream: `Em#5`). See
+  [Chord detection and chords](#chord-detection-and-chords).
+
+Every future fix that changes upstream behaviour is listed here.
 
 Until the fork is published, packages keep their `@tonaljs/*` names, and the
 install instructions below still refer to upstream Tonal. Use this repository

@@ -20,6 +20,10 @@ describe("scale types in other EDOs", () => {
       "bayati",
       "saba",
       "sikah",
+      "huzam",
+      "iraq",
+      "nairuz",
+      "suznak",
     ]);
   });
 

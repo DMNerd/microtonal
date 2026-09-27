@@ -57,10 +57,13 @@ describe("scales in other EDOs", () => {
     expect(Scale.modeNames("C major", { edo: 31 })).toEqual(
       Scale.modeNames("C major"),
     );
-    // sikah uses the notes of rast, starting from E half-flat
+    // sikah, nairuz and 'iraq use the notes of rast, starting from E↓, G
+    // and B↓
     expect(Scale.modeNames("C rast", Q24)).toEqual([
       ["C", "rast"],
       ["E↓", "sikah"],
+      ["G", "nairuz"],
+      ["B↓", "iraq"],
     ]);
   });
 
@@ -78,5 +81,23 @@ describe("scales in other EDOs", () => {
   test("degrees", () => {
     const rast = Scale.degrees("C rast");
     expect([1, 3, 7, 8].map(rast)).toEqual(["C", "E↓", "B↓", "C"]);
+  });
+});
+
+describe("more maqamat", () => {
+  test("notes on their traditional tonics", () => {
+    expect(Scale.get("E↓ huzam").notes).toEqual("E↓ F G Ab B C D".split(" "));
+    expect(Scale.get("B↓ iraq").notes).toEqual("B↓ C D E↓ F G A".split(" "));
+    expect(Scale.get("C nairuz").notes).toEqual("C D E↓ F G A↓ Bb".split(" "));
+    expect(Scale.get("C suznak").notes).toEqual("C D E↓ F G Ab B".split(" "));
+  });
+
+  test("detected in 24-EDO", () => {
+    expect(
+      Scale.detect("C D E↓ F G Ab B".split(" "), {
+        edo: 24,
+        match: "exact",
+      }),
+    ).toEqual(["C suznak"]);
   });
 });

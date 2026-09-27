@@ -380,12 +380,52 @@ export function sortedUniqNames(notes: any[]): string[] {
  * simplify("C###") // => "D#"
  * simplify("C###")
  * simplify("B#4") // => "C5"
+ * // In an EDO, respell the note's exact step there:
+ * simplify("C##", { edo: 19 }) // => "Db" (C## isn't D in 19-EDO)
+ * simplify("E#", { edo: 19 }) // => "E#" (nor is E# F)
+ * simplify("C#↑", { edo: 24 }) // => "C#↑"
  */
-export const simplify = (noteName: NoteName | Pitch): string => {
+/** Respell in an equal division of the octave instead of 12-TET */
+export interface EdoRespellOptions {
+  edo: number;
+}
+
+// Only a real options object counts: `simplify` is often a `map` callback,
+// which passes the array index as the second argument
+const edoOption = (options: unknown): number | undefined => {
+  const edo =
+    options && typeof options === "object"
+      ? (options as Partial<EdoRespellOptions>).edo
+      : undefined;
+  return typeof edo === "number" && Number.isInteger(edo) && edo > 0
+    ? edo
+    : undefined;
+};
+
+// Flats and downs lean one way, sharps and ups the other
+const leansFlat = (note: Note) =>
+  note.alt < 0 || (note.alt === 0 && note.ups < 0);
+
+// The note's exact pitch in the EDO, spelled like `edoNames`
+function spellInEdo(note: Note, edo: number, accidental: EdoAccidental) {
+  return fromEdoSteps(pitchEdoSteps(note, edo), edo, {
+    accidental,
+    pitchClass: note.oct === undefined,
+  });
+}
+
+export const simplify = (
+  noteName: NoteName | Pitch,
+  options?: Partial<EdoRespellOptions>,
+): string => {
   const note = get(noteName);
   if (note.empty) {
     return "";
   }
+  // In an EDO: the simplest spelling of the same step, keeping the
+  // accidental direction (simplify("C##", { edo: 19 }) => "Db")
+  const edo = edoOption(options);
+  if (edo) return spellInEdo(note, edo, leansFlat(note) ? "flat" : "sharp");
   // Ups and downs are kept: simplify("C##↑") => "D↑"
   return keepUps(note, (base) =>
     midiToNoteName(base.midi || base.chroma, {
@@ -406,12 +446,22 @@ export const simplify = (noteName: NoteName | Pitch): string => {
  * Note.enharmonic("C") // => "C"
  * Note.enharmonic("F2","E#") // => "E#2"
  * Note.enharmonic("C##b"); // => ""
+ * // In an EDO, the other spelling of the note's exact step there:
+ * Note.enharmonic("C#↑", undefined, { edo: 24 }) // => "D↓"
+ * Note.enharmonic("E#4", undefined, { edo: 19 }) // => "Fb4"
+ * Note.enharmonic("C#", "Db", { edo: 19 }) // => "" (not the same step)
  */
-export function enharmonic(noteName: string, destName?: string): string {
+export function enharmonic(
+  noteName: string,
+  destName?: string,
+  options?: Partial<EdoRespellOptions>,
+): string {
   const src = get(noteName);
   if (src.empty) {
     return "";
   }
+  const edo = edoOption(options);
+  if (edo) return enharmonicInEdo(src, destName, edo);
   // Without a destination, ups and downs are kept: enharmonic("Db↓") => "C#↓"
   if (src.ups && !destName) {
     return keepUps(src, (base) => enharmonic(base.name));
@@ -448,6 +498,23 @@ export function enharmonic(noteName: string, destName?: string): string {
   // calculate the new octave
   const destOct = src.oct + destOctOffset;
   return dest.pc + destOct;
+}
+
+// enharmonic() in an EDO: the other view's spelling of the same step, or
+// `destName` when it is the same step (with the octave fixed accordingly)
+function enharmonicInEdo(src: Note, destName: string | undefined, edo: number) {
+  if (!destName) {
+    return spellInEdo(src, edo, leansFlat(src) ? "sharp" : "flat");
+  }
+  const dest = get(destName);
+  if (dest.empty) return "";
+  const steps = pitchEdoSteps(src, edo);
+  const destPc = props(dest.pc);
+  if (pitchEdoChroma(destPc, edo) !== pitchEdoChroma(src, edo)) return "";
+  if (src.oct === undefined) return dest.pc;
+  const n0 = props(dest.pc + "0");
+  const oct = (steps - pitchEdoSteps(n0, edo)) / edo;
+  return props({ ...n0, oct }).name;
 }
 
 /** @deprecated */

@@ -1,5 +1,6 @@
 import { compact, range } from "@tonaljs/collection";
 import { midiToNoteName, toMidi, ToNoteNameOptions } from "@tonaljs/midi";
+import { edoSteps, fromEdoSteps } from "@tonaljs/note";
 
 /**
  * Create a numeric range. You supply a list of notes or numbers and it will
@@ -16,21 +17,44 @@ import { midiToNoteName, toMidi, ToNoteNameOptions } from "@tonaljs/midi";
  * numeric(["C4", "E4", "Bb3"]) // => [60, 61, 62, 63, 64, 63, 62, 61, 60, 59, 58]
  */
 export function numeric(notes: (string | number)[]): number[] {
-  const midi: number[] = compact(
-    notes.map((note) => (typeof note === "number" ? note : toMidi(note))),
+  return fillRanges(notes, (note) =>
+    typeof note === "number" ? note : toMidi(note),
   );
-  if (!notes.length || midi.length !== notes.length) {
+}
+
+// Every number from each value to the next (both included); [] if any note
+// is invalid
+function fillRanges(
+  notes: (string | number)[],
+  toNumber: (note: string | number) => number | null | undefined,
+): number[] {
+  const values: number[] = compact(
+    notes.map((note) => {
+      const value = toNumber(note);
+      return Number.isFinite(value) ? value : null;
+    }),
+  );
+  if (!notes.length || values.length !== notes.length) {
     // there is no valid notes
     return [];
   }
 
-  return midi.reduce(
+  return values.reduce(
     (result, note) => {
       const last: number = result[result.length - 1];
       return result.concat(range(last, note).slice(1));
     },
-    [midi[0]],
+    [values[0]],
   );
+}
+
+export interface ChromaticOptions extends ToNoteNameOptions {
+  /**
+   * Count in steps of an equal division of the octave instead of semitones.
+   * Numbers are then EDO steps (C0 = 0), and notes are spelled like
+   * `Note.edoNames` (with sharps and ups when `sharps` is true).
+   */
+  edo: number;
 }
 
 /**
@@ -48,8 +72,20 @@ export function numeric(notes: (string | number)[]): number[] {
  */
 export function chromatic(
   notes: (string | number)[],
-  options?: ToNoteNameOptions,
+  options?: Partial<ChromaticOptions>,
 ): string[] {
+  const edo = options?.edo;
+  if (typeof edo === "number" && Number.isInteger(edo) && edo > 0) {
+    const accidental = options?.sharps ? "sharp" : "flat";
+    return fillRanges(notes, (note) =>
+      typeof note === "number" ? note : edoSteps(note, edo),
+    ).map((steps) =>
+      fromEdoSteps(steps, edo, {
+        accidental,
+        pitchClass: options?.pitchClass,
+      }),
+    );
+  }
   return numeric(notes).map((midi) => midiToNoteName(midi, options));
 }
 

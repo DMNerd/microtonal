@@ -49,6 +49,10 @@ Work in progress on the `edo-ups-downs` branch.
    `roman-numeral`, `progression`, `abc-notation`; `key` and `mode` work
    through transposition). See [Not converted](#not-converted) for what
    stays 12-TET.
+4. **Further EDO features** — _done_: sharp/flat spelling views
+   (`Note.edoNames`), EDO profiles (fifths vs proportional sizing), respelling
+   in any EDO (`simplify`/`enharmonic` with `{ edo }`), EDO ranges
+   (`Range.chromatic` with `{ edo }`), four more maqamat.
 
 ### Implemented so far
 
@@ -170,8 +174,23 @@ both views in EDOs 5 to 72.
 - `Interval.invert` flips them — `invert("↓3M")` => `"↑6m"`.
 - `Interval.simplify` — `simplify("↓10M")` => `"↓3M"`.
 - `Note.simplify` / `Note.enharmonic` respell the note in 12-TET and keep
-  the ups: `simplify("C##↑")` => `"D↑"`. These respellings assume C## = D,
-  which holds in 12- and 24-EDO but not in every EDO (in 19-EDO C## ≠ D).
+  the ups: `simplify("C##↑")` => `"D↑"`. That assumes C## = D, which holds in
+  12- and 24-EDO but not in every EDO (in 19-EDO C## ≠ D). Pass `{ edo }` to
+  respell the note's exact step in that EDO instead, with the spelling rules
+  of `Note.edoNames`:
+
+  ```js
+  Note.simplify("C##", { edo: 19 }); // => "Db"  (C## is Db in 19-EDO)
+  Note.simplify("E#", { edo: 19 }); // => "E#"  (E# is not F)
+  Note.simplify("Db↑", { edo: 24 }); // => "D↓"
+  Note.enharmonic("C#↑", undefined, { edo: 24 }); // => "D↓"
+  Note.enharmonic("E#4", undefined, { edo: 19 }); // => "Fb4"
+  Note.enharmonic("C#", "Db", { edo: 19 }); // => ""  (different steps)
+  ```
+
+  `simplify` keeps the note's direction (sharps and ups use the sharp view,
+  flats and downs the flat view); `enharmonic` uses the other view, or checks
+  that `destName` is the same step and gives it the right octave.
 
 #### Pitch-class sets
 
@@ -280,12 +299,24 @@ upstream test changed: they only cover cases where both orders agree.
 A microtonal scale dictionary is added, starting with Arabic maqamat
 (ascending forms, from [Maqam World](https://www.maqamworld.com/en/maqam.php)):
 
-| Name   | Intervals                 | Notes (traditional tonic) |
-| ------ | ------------------------- | ------------------------- |
-| rast   | 1P 2M ↓3M 4P 5P 6M ↓7M    | C D E↓ F G A B↓           |
-| bayati | 1P ↓2M 3m 4P 5P 6m 7m     | D E↓ F G A Bb C           |
-| saba   | 1P ↓2M 3m 4d 5P 6m 7m     | D E↓ F Gb A Bb C          |
-| sikah  | 1P ↑2m ↑3m ↑4P 5P ↑6m ↑7m | E↓ F G A B↓ C D           |
+| Name   | Intervals                  | Notes (traditional tonic) |
+| ------ | -------------------------- | ------------------------- |
+| rast   | 1P 2M ↓3M 4P 5P 6M ↓7M     | C D E↓ F G A B↓           |
+| bayati | 1P ↓2M 3m 4P 5P 6m 7m      | D E↓ F G A Bb C           |
+| saba   | 1P ↓2M 3m 4d 5P 6m 7m      | D E↓ F Gb A Bb C          |
+| sikah  | 1P ↑2m ↑3m ↑4P 5P ↑6m ↑7m  | E↓ F G A B↓ C D           |
+| huzam  | 1P ↑2m ↑3m ↑4d ↑5P ↑6m ↑7m | E↓ F G Ab B C D           |
+| iraq   | 1P ↑2m ↑3m 4P ↑5d ↑6m ↑7m  | B↓ C D E↓ F G A           |
+| nairuz | 1P 2M ↓3M 4P 5P ↓6M 7m     | C D E↓ F G A↓ Bb          |
+| suznak | 1P 2M ↓3M 4P 5P 6m 7M      | C D E↓ F G Ab B           |
+
+Maqam World shows the scales as images, so huzam, 'iraq, nairuz and suznak are
+built from the ajnas each page names (huzam: Sikah on the tonic, Hijaz on the
+3rd, Rast on the 6th; 'iraq: Sikah, Bayati on the 3rd, Rast on the 6th;
+nairuz: Rast, Bayati on the 5th; suznak: Rast, Hijaz on the 5th). Maqamat
+whose pages don't pin every note down are left out: jiharkah's 3rd and 4th
+degrees are "played lower than notated" by no fixed amount, and husayni's
+page only names its lower jins.
 
 They follow the same rules as the microtonal chords: reachable by name
 (`Scale.get("C rast")`, aliases like `"maqam rast"` and `"segah"`), not part
@@ -324,10 +355,25 @@ accept `{ edo }`; without it they behave exactly as upstream. `get`,
 - `AbcNotation.scientificToAbcNotation` returns `""` for notes with ups or
   downs (ABC has no standard for them) instead of silently dropping them.
 
+#### Ranges
+
+`Range.chromatic` takes an `edo` option: it counts in steps of that EDO
+(numbers are EDO steps, C0 = 0) and spells the notes like `Note.edoNames`,
+with flats and downs unless `sharps` is set:
+
+```js
+Range.chromatic(["C4", "D4"], { edo: 24 });
+// => ["C4", "Db↓4", "Db4", "D↓4", "D4"]
+Range.chromatic(["C4", "D4"], { edo: 24, sharps: true });
+// => ["C4", "C↑4", "C#4", "C#↑4", "D4"]
+```
+
+`Range.numeric` stays in MIDI numbers.
+
 #### Not converted
 
 These stay 12-TET: `midi` and `Note.freq`/`Note.midi` (use `Note.edoFreq`),
-`range` (`Range.chromatic`), `voicing`, `voice-leading` and
+`Range.numeric`, `voicing`, `voice-leading` and
 `voicing-dictionary`, `Pcset.chromas()`, the `chroma`/`setNum` fields of
 `Chord.get`, `Scale.get` and the dictionaries (use `forEdo` or
 `Pcset.get(…, { edo })`), and the Greek `mode` dictionary. Chord symbols with

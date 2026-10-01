@@ -7,7 +7,6 @@ import { note } from "@tonaljs/pitch-note";
 interface FoundChord {
   readonly weight: number;
   readonly name: string;
-  // lower is better: the chord type tier, plus 0.5 for inversions
   readonly rank: number;
 }
 
@@ -25,25 +24,12 @@ const namedSet = (notes: string[], edo: number) => {
 
 type DetectOptions = {
   assumePerfectFifth: boolean;
-  /**
-   * Number of equal divisions of the octave (12 by default). In other EDOs
-   * the notes are compared as pitch classes of that EDO, and the chord types
-   * come from `ChordType.forEdo(edo)` (including microtonal chords where they
-   * make sense).
-   */
+
   edo: number;
 };
 
 /**
- * Find the chord names that match a list of notes.
- * The first note is taken as the bass: chords rooted elsewhere are returned
- * as slash chords.
- *
- * Results are ranked by how common the chord type is (see `ChordType.tier`),
- * with half a tier of penalty for inversions. So an inversion of a common
- * chord comes before a rare chord in root position: E C G is "CM/E" before
- * "Em#5". (Upstream Tonal puts every root position chord first.)
- *
+ * Find the chord names that match a list of notes (the first is the bass)
  * @example
  * detect(["D", "F#", "A", "C"]) // => ["D7"]
  * detect(["C", "E↓", "G"], { edo: 24 }) // => ["C(↓3)"]
@@ -65,8 +51,6 @@ export function detect(
     .map((chord) => chord.name);
 }
 
-// Steps (in an EDO) of the degrees looked at by `assumePerfectFifth`.
-// In 12-EDO: thirds 3 and 4, fifth 7, other fifths 6 and 8, sevenths 10 and 11
 interface FifthRules {
   fifth: number;
   thirds: number[];
@@ -89,7 +73,6 @@ function fifthRules(edo: number): FifthRules {
   return (rulesCache[key] = {
     fifth,
     thirds: between(at("2M"), at("4P")),
-    // anything from just above the fourth up to the minor sixth
     nonPerfectFifths: between(at("4P"), at("6m") + 1).filter(
       (s) => s !== fifth,
     ),

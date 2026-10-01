@@ -29,15 +29,10 @@ import {
   forEdo as scaleTypesForEdo,
 } from "@tonaljs/scale-type";
 
-/**
- * Options for functions that work in any equal division of the octave:
- * - edo: number of equal divisions of the octave (12 by default)
- */
 export interface EdoOptions {
   edo: number;
 }
 
-// 12 when no edo is given, NaN when it is not an EDO (see `edoOption`)
 const edoOf = (options?: Partial<EdoOptions>): number =>
   edoOption(options) ?? 12;
 const scaleTypesIn = (edo: number) =>
@@ -291,7 +286,6 @@ export function modeNames(
     .filter((x) => x[0]);
 }
 
-// The note of a pitch class name whose height is `steps` in an EDO
 function placeInOctave(pc: string, steps: number, edo: number) {
   const n0 = note(pc + "0");
   if (n0.empty) return undefined;
@@ -303,7 +297,6 @@ function getEdoNoteNameOf(scale: string | string[], edo: number) {
   const names = Array.isArray(scale) ? scaleNotes(scale) : get(scale).notes;
   const chromas = names.map((name) => edoChroma(note(name), edo));
 
-  // numbers are steps of the edo (C0 = 0)
   return (noteOrSteps: string | number): string | undefined => {
     const steps =
       typeof noteOrSteps === "number"

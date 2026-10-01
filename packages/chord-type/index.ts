@@ -30,12 +30,10 @@ const NoChordType: ChordType = {
 type ChordTypeName = string | PcsetChroma | PcsetNum;
 
 let dictionary: ChordType[] = [];
-// Chords with ups or downs: kept apart because their 12-EDO sizes clash with
-// traditional chords ("↓3M" is "3m" in 12-EDO). See `forEdo`.
+// chords with ups or downs: in 12-EDO they would clash with other chords
 let microtonal: ChordType[] = [];
 let index: Record<ChordTypeName, ChordType> = Object.create(null);
 let edoCache: Record<string, ChordType[]> = {};
-// How established each chord type is, by interval spelling. See `tier`.
 let tiers: Record<string, number> = Object.create(null);
 
 /**
@@ -91,19 +89,9 @@ export function allMicrotonal(): ChordType[] {
 }
 
 /**
- * Get the chord types of an equal division of the octave (EDO), with their
- * pitch class set (chroma, setNum, normalized) computed in that EDO.
- *
- * - Chords whose tones merge in that EDO are left out.
- * - Chords with ups or downs are only included in EDOs where an up is
- *   smaller than a sharp in an EDO spelled by fifths (17, 22, 24, 31, 41,
- *   53-EDO...; see `edoProfile`) and
- *   when they are not the same set as a traditional chord. When two of them
- *   are the same set, only the first one is kept.
- *
+ * Get the chord types of an EDO, with their pitch class sets in that EDO
  * @example
  * ChordType.forEdo(24).find(t => t.name === "downmajor").chroma
- * // => "100000010000001000000000"
  */
 export function forEdo(edo: number): ChordType[] {
   if (!isEdo(edo)) return [];
@@ -126,17 +114,9 @@ export function removeAll() {
 }
 
 /**
- * How established a chord type is, used to rank chord detection results:
- *
- * - 0: core chords (the named major, minor, diminished, dominant and
- *   suspended chords of the dictionary, and the microtonal chords)
- * - 1: other named chords (fifth, augmented, minor augmented...) and chords
- *   added with `add`
- * - 2: legacy chords (the unnamed ones, like "7no5" or "Madd9")
- *
+ * Get how common a chord type is (0 to 2), to rank chord detection results
  * @example
  * ChordType.tier(ChordType.get("major")) // => 0
- * ChordType.tier(ChordType.get("m#5")) // => 1
  */
 export function tier(type: Pick<ChordType, "intervals">): number {
   return tiers[type.intervals.join(" ")] ?? 1;
@@ -163,7 +143,6 @@ export function add(intervals: string[], aliases: string[], fullName?: string) {
   }
   const hasUps = intervals.some((ivl) => interval(ivl).ups);
   if (hasUps) {
-    // only reachable by name: its 12-EDO chroma would shadow another chord
     microtonal.push(chord);
   } else {
     dictionary.push(chord);
@@ -178,7 +157,6 @@ export function addAlias(chord: ChordType, alias: string) {
 }
 
 function getQuality(intervals: string[]): ChordQuality {
-  // ups and downs don't change the quality: "↓3M" is still a major third
   const plain = intervals.map((ivl) => ivl.replace(/[↑↓^v]/g, ""));
   const has = (interval: string) => plain.indexOf(interval) !== -1;
   return has("5A")
@@ -192,8 +170,6 @@ function getQuality(intervals: string[]): ChordQuality {
           : "Unknown";
 }
 
-// The named chords of the dictionary's "Other" section: named, but less
-// common than the core chords.
 const OTHER_CHORDS = [
   "fifth",
   "augmented",

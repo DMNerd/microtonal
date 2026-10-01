@@ -95,8 +95,7 @@ function fromPitch(pitch: Pitch): RomanNumeral | NoRomanNumeral {
   );
 }
 
-// Ups and downs go first: "↓III", "↑bVII" ("v" is not accepted as a down,
-// it would clash with the minor numerals v, vi and vii)
+// "v" is not a down here: it would clash with the numerals v, vi and vii
 const UPS_REGEX = /^([↑↓^]*)(.*)$/;
 const REGEX =
   /^(#{1,}|b{1,}|x{1,}|)(IV|I{1,3}|VI{0,2}|iv|i{1,3}|vi{0,2})([^IViv]*)$/;

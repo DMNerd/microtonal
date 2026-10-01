@@ -98,12 +98,9 @@ export const freq = (note: NoteLiteral) => get(note).freq;
 export const chroma = (note: NoteLiteral) => get(note).chroma;
 
 /**
- * Get the note height in steps of an equal division of the octave (C0 = 0),
- * or the steps above C for pitch classes. Ups and downs are one step each.
- *
+ * Get the note height in steps of an EDO (C0 = 0)
  * @example
  * Note.edoSteps("E4", 24) // => 104
- * Note.edoSteps("E↓", 24) // => 7
  */
 export const edoSteps = (note: NoteLiteral, edo = 12): number => {
   const n = get(note);
@@ -111,12 +108,9 @@ export const edoSteps = (note: NoteLiteral, edo = 12): number => {
 };
 
 /**
- * Get the note chroma (pitch class, 0 to edo - 1) in an equal division of
- * the octave.
- *
+ * Get the note chroma in an EDO (0 to edo - 1)
  * @example
  * Note.edoChroma("E↓", 24) // => 7
- * Note.edoChroma("F#", 19) // => 9
  */
 export const edoChroma = (note: NoteLiteral, edo = 12): number => {
   const n = get(note);
@@ -124,13 +118,9 @@ export const edoChroma = (note: NoteLiteral, edo = 12): number => {
 };
 
 /**
- * Get the frequency of a note in an equal division of the octave.
- * By default A4 is 440Hz; set `refNote` and `refFreq` to tune differently.
- * It returns null for pitch classes (notes without octave).
- *
+ * Get the frequency of a note in an EDO (A4 = 440Hz by default)
  * @example
- * Note.edoFreq("A4", 24) // => 440
- * Note.edoFreq("A↑4", 24) // => 452.89... (a quarter tone higher)
+ * Note.edoFreq("A↑4", 24) // => 452.89...
  * Note.edoFreq("C4", 19, { refNote: "C4", refFreq: 256 }) // => 256
  */
 export function edoFreq(
@@ -154,34 +144,18 @@ export function edoFreq(
   return refFreq * Math.pow(2, steps / edo);
 }
 
-/** Accidental preference when spelling EDO steps: sharps/ups or flats/downs */
 export type EdoAccidental = "sharp" | "flat";
 
 const LETTERS = ["C", "D", "E", "F", "G", "A", "B"];
 const SPELLING_ACCIDENTALS = ["", "#", "b", "##", "bb"];
 const spellingCache: Record<string, string[]> = {};
-// A spelling that crosses a neighbouring natural costs more than one up or
-// down (see `edoCrossesNatural`)
 const CROSSING_COST = 1.5;
 
 /**
- * Spell every pitch class of an EDO with a sharp or flat preference.
- * Among all spellings (naturals, single and double sharps and flats, plus
- * ups or downs) the winner has, in order:
- *
- * 1. the fewest ups or downs, counting a double sharp or flat as one more
- *    (in 31-EDO step 1 is "C↑", not "B##"), and a spelling that lands on or
- *    past a neighbouring natural as one and a half more (in 41-EDO step 1
- *    is "C↑", not "B#"; in 53-EDO step 17 is "E↓", not "Fb")
- * 2. ups for the sharp view, downs for the flat view
- * 3. the fewest accidentals
- * 4. no E#, B#, Cb or Fb (in 17-EDO step 1 is "Db", not "B#")
- * 5. sharps for the sharp view, flats for the flat view
- *
+ * Get the names of every pitch class of an EDO, preferring sharps or flats
  * @example
  * Note.edoNames(24, "sharp").slice(0, 4) // => ["C", "C↑", "C#", "C#↑"]
  * Note.edoNames(24, "flat").slice(0, 4) // => ["C", "Db↓", "Db", "D↓"]
- * Note.edoNames(19, "sharp").slice(0, 3) // => ["C", "C#", "Db"]
  */
 export function edoNames(edo: number, accidental: EdoAccidental): string[] {
   if (!isEdo(edo)) return [];
@@ -232,18 +206,10 @@ function compareCosts(a: number[], b: number[]): number {
 }
 
 /**
- * Get a note name from its height in steps of an equal division of the
- * octave (C0 = 0).
- *
- * With an `accidental` preference each step is spelled like `edoNames`.
- * Without it, each step gets the simplest interval name above C (fewest ups
- * and downs, see `Pcset.intervals`).
- *
+ * Get a note name from its height in steps of an EDO (C0 = 0)
  * @example
- * Note.fromEdoSteps(104, 24) // => "E4"
  * Note.fromEdoSteps(103, 24) // => "Eb↑4"
  * Note.fromEdoSteps(103, 24, { accidental: "sharp" }) // => "D#↑4"
- * Note.fromEdoSteps(7, 24, { pitchClass: true }) // => "Eb↑"
  */
 export function fromEdoSteps(
   steps: number,
@@ -264,16 +230,9 @@ export function fromEdoSteps(
 }
 
 /**
- * Transpose a note by a number of steps of an equal division of the octave.
- * The steps are spelled as an interval (see `Interval.fromEdoSteps`), so the
- * note keeps its letter where it can. In "proportional" EDOs, where that
- * spelling can land on another step, the target step is respelled like
- * `edoNames` instead. Pitch classes stay pitch classes.
- *
+ * Transpose a note by a number of steps of an EDO
  * @example
- * Note.transposeEdoSteps("C4", 7, 24) // => "Eb↑4"
  * Note.transposeEdoSteps("C#", 1, 24) // => "C#↑"
- * Note.transposeEdoSteps("E4", -1, 24) // => "E↓4"
  */
 export function transposeEdoSteps(
   note: NoteLiteral,
@@ -295,7 +254,6 @@ export function transposeEdoSteps(
   });
 }
 
-// Apply a 12-TET respelling to the note without its ups/downs, then put them back
 function keepUps(note: Note, respell: (base: Note) => string): string {
   if (!note.ups) return respell(note);
   const base = props({ step: note.step, alt: note.alt, oct: note.oct });
@@ -434,21 +392,15 @@ export function sortedUniqNames(notes: any[]): string[] {
  * simplify("C###") // => "D#"
  * simplify("C###")
  * simplify("B#4") // => "C5"
- * // In an EDO, respell the note's exact step there:
- * simplify("C##", { edo: 19 }) // => "Db" (C## isn't D in 19-EDO)
- * simplify("E#", { edo: 19 }) // => "E#" (nor is E# F)
- * simplify("C#↑", { edo: 24 }) // => "C#↑"
+ * simplify("C##", { edo: 19 }) // => "Db"
  */
-/** Respell in an equal division of the octave instead of 12-TET */
 export interface EdoRespellOptions {
   edo: number;
 }
 
-// Flats and downs lean one way, sharps and ups the other
 const leansFlat = (note: Note) =>
   note.alt < 0 || (note.alt === 0 && note.ups < 0);
 
-// The note's exact pitch in the EDO, spelled like `edoNames`
 function spellInEdo(note: Note, edo: number, accidental: EdoAccidental) {
   return fromEdoSteps(pitchEdoSteps(note, edo), edo, {
     accidental,
@@ -464,15 +416,12 @@ export const simplify = (
   if (note.empty) {
     return "";
   }
-  // In an EDO: the simplest spelling of the same step, keeping the
-  // accidental direction (simplify("C##", { edo: 19 }) => "Db")
   const edo = edoOption(options);
   if (edo !== undefined) {
     return isEdo(edo)
       ? spellInEdo(note, edo, leansFlat(note) ? "flat" : "sharp")
       : "";
   }
-  // Ups and downs are kept: simplify("C##↑") => "D↑"
   return keepUps(note, (base) =>
     midiToNoteName(base.midi || base.chroma, {
       sharps: base.alt > 0,
@@ -492,10 +441,7 @@ export const simplify = (
  * Note.enharmonic("C") // => "C"
  * Note.enharmonic("F2","E#") // => "E#2"
  * Note.enharmonic("C##b"); // => ""
- * // In an EDO, the other spelling of the note's exact step there:
  * Note.enharmonic("C#↑", undefined, { edo: 24 }) // => "D↓"
- * Note.enharmonic("E#4", undefined, { edo: 19 }) // => "Fb4"
- * Note.enharmonic("C#", "Db", { edo: 19 }) // => "" (not the same step)
  */
 export function enharmonic(
   noteName: string,
@@ -510,7 +456,6 @@ export function enharmonic(
   if (edo !== undefined) {
     return isEdo(edo) ? enharmonicInEdo(src, destName, edo) : "";
   }
-  // Without a destination, ups and downs are kept: enharmonic("Db↓") => "C#↓"
   if (src.ups && !destName) {
     return keepUps(src, (base) => enharmonic(base.name));
   }
@@ -548,8 +493,6 @@ export function enharmonic(
   return dest.pc + destOct;
 }
 
-// enharmonic() in an EDO: the other view's spelling of the same step, or
-// `destName` when it is the same step (with the octave fixed accordingly)
 function enharmonicInEdo(src: Note, destName: string | undefined, edo: number) {
   if (!destName) {
     return spellInEdo(src, edo, leansFlat(src) ? "sharp" : "flat");

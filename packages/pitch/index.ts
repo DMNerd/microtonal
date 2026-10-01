@@ -38,16 +38,14 @@ export type PitchCoordinates =
  * - {number} alt - Number of alterations: -2 = 'bb', -1 = 'b', 0 = '', 1 = '#', ...
  * - {number} [oct] = The octave (undefined when is a coord class)
  * - {number} [dir] = Interval direction (undefined when is not an interval)
- * - {number} [ups] = Ups (positive) or downs (negative): each one raises or
- *   lowers the pitch by a single step of the equal division in use
- *   (ups and downs notation). Undefined means 0.
+ * - {number} [ups] = Ups (positive) or downs (negative), one EDO step each
  */
 export interface Pitch {
   readonly step: number;
   readonly alt: number;
   readonly oct?: number; // undefined for pitch classes
   readonly dir?: Direction; // undefined for notes
-  readonly ups?: number; // undefined means no ups or downs
+  readonly ups?: number;
 }
 
 const SIZES = [0, 2, 4, 5, 7, 9, 11];
@@ -124,13 +122,9 @@ function unaltered(f: number): number {
 const mod = (n: number, m: number) => ((n % m) + m) % m;
 
 /**
- * Whether a value is a usable equal division of the octave: a positive whole
- * number. Functions given anything else return their empty result (NaN, an
- * empty list, an empty name or set) instead of guessing.
- *
+ * Test if a value is a valid EDO (a positive integer)
  * @example
  * isEdo(31) // => true
- * isEdo(0) // => false
  * isEdo(2.5) // => false
  */
 export function isEdo(edo: unknown): edo is number {
@@ -138,13 +132,9 @@ export function isEdo(edo: unknown): edo is number {
 }
 
 /**
- * The edo of an `{ edo }` options object: undefined when none is given, NaN
- * when it is given but is not an EDO (see `isEdo`). Only a real object counts:
- * functions are often `map` callbacks, which pass the array index next.
- *
+ * Get the edo of an options object: undefined if not given, NaN if invalid
  * @example
  * edoOption({ edo: 24 }) // => 24
- * edoOption({}) // => undefined
  * edoOption({ edo: 0 }) // => NaN
  */
 export function edoOption(options: unknown): number | undefined {
@@ -156,10 +146,9 @@ export function edoOption(options: unknown): number | undefined {
 }
 
 /**
- * Size of the fifth, in steps, of an equal division of the octave (EDO).
- * It uses the closest approximation to a just 3/2 (the "patent" fifth), so
- * 12 => 7, 19 => 11, 24 => 14, 31 => 18. The fifth notes are spelled with can
- * differ (see `edoProfile`).
+ * Get the best fifth of an EDO, in steps
+ * @example
+ * edoFifth(31) // => 18
  */
 export function edoFifth(edo: number): number {
   if (!isEdo(edo)) return NaN;
@@ -167,9 +156,9 @@ export function edoFifth(edo: number): number {
 }
 
 /**
- * Size, in steps, of a sharp (the chromatic semitone: seven fifths up, four
- * octaves down) in an EDO, using the fifth of its profile (`edoProfile`).
- * 12 => 1, 19 => 1, 24 => 2, 31 => 2, 28 => 0, 16 => -1
+ * Get the size of a sharp in an EDO, in steps
+ * @example
+ * edoSharp(24) // => 2
  */
 export function edoSharp(edo: number): number {
   return edoProfile(edo).sharp;
@@ -177,21 +166,10 @@ export function edoSharp(edo: number): number {
 
 const JUST_FIFTH_CENTS = 1200 * Math.log2(3 / 2);
 
-/**
- * How EDOs without an override are spelled (see `setEdoSpelling`):
- * - "fifths" (default): by stacking fifths, as the Xenharmonic Wiki notates
- *   them. Only EDOs below 5, 6-EDO and 8-EDO (written as subsets of 12- and
- *   24-EDO) are proportional.
- * - "proportional-fallback": by fifths only when a sharp is at least one step
- *   and the fifth is within 15 cents of 3/2; other EDOs are proportional, so
- *   that, say, a major and a minor triad stay apart in 28-EDO.
- */
 export type EdoSpelling = "fifths" | "proportional-fallback";
 
-/** Per-EDO choices that win over the global spelling (see `setEdoProfile`) */
 export interface EdoProfileOverride {
   spelling?: "fifths" | "proportional";
-  /** the fifth to spell by, in steps */
   fifth?: number;
 }
 
@@ -200,9 +178,7 @@ const overrides: Record<number, EdoProfileOverride> = {};
 let profileCache: Record<string, EdoProfile> = {};
 
 /**
- * Set how EDOs are spelled (see `EdoSpelling`), for every function that
- * takes an EDO. EDOs with an override (`setEdoProfile`) keep it.
- *
+ * Set how EDOs without an override are spelled
  * @example
  * setEdoSpelling("proportional-fallback")
  * edoProfile(28).spelling // => "proportional"
@@ -213,21 +189,18 @@ export function setEdoSpelling(spelling: EdoSpelling): void {
   profileCache = {};
 }
 
-/** The current global spelling (see `setEdoSpelling`) */
+/**
+ * Get the current EDO spelling (see `setEdoSpelling`)
+ */
 export function edoSpelling(): EdoSpelling {
   return globalSpelling;
 }
 
 /**
- * Override how one EDO is spelled, whatever the global spelling: by fifths
- * or proportionally, and with which fifth. Call it without options to remove
- * the override. A fifth that isn't a whole number of steps between 0 and the
- * EDO is ignored.
- *
+ * Override the spelling or the fifth of an EDO. Without options, remove it.
  * @example
- * setEdoProfile(28, { spelling: "proportional" })
- * setEdoProfile(57, { fifth: 34 }) // 57-EDO by its sharp fifth (34\57)
- * setEdoProfile(28) // back to the global spelling
+ * setEdoProfile(57, { fifth: 34 })
+ * setEdoProfile(57) // remove the override
  */
 export function setEdoProfile(edo: number, override?: EdoProfileOverride) {
   if (!isEdo(edo)) return;
@@ -243,8 +216,7 @@ export function setEdoProfile(edo: number, override?: EdoProfileOverride) {
 }
 
 /**
- * A key for caching anything computed for an EDO: it changes when the EDO's
- * profile can change (global spelling or override).
+ * Get a cache key for an EDO that changes with its profile
  */
 export function edoKey(edo: number): string {
   const o = overrides[edo];
@@ -253,25 +225,6 @@ export function edoKey(edo: number): string {
     : `${edo}/${globalSpelling}`;
 }
 
-/**
- * How pitches are sized in an EDO:
- * - fifth: steps of the fifth notes are spelled by: the best fifth
- *   (`edoFifth`), except where it makes the minor second descend (13- and
- *   18-EDO), which use the next narrower one, as the Xenharmonic Wiki does
- * - sharp: steps of a sharp (`edoSharp`): seven of those fifths less four
- *   octaves. It can be 0 (7, 14, 21, 28, 35-EDO: sharps don't move the pitch)
- *   or negative (9, 11, 16, 23-EDO: a sharp lowers it)
- * - fifthErrorCents: how far that fifth is from a just 3/2
- * - spelling: "fifths" when notes and intervals are sized by stacking that
- *   fifth, "proportional" when the 12-TET size is scaled to the EDO (ups and
- *   downs are still one step). Which EDOs are proportional depends on the
- *   global spelling (`setEdoSpelling`) and overrides (`setEdoProfile`).
- *
- * @example
- * edoProfile(22) // => { edo: 22, fifth: 13, sharp: 3, fifthErrorCents: 7.1, spelling: "fifths" }
- * edoProfile(13).fifth // => 7 (the best fifth, 8, makes the minor 2nd descend)
- * edoProfile(6).spelling // => "proportional"
- */
 export interface EdoProfile {
   edo: number;
   fifth: number;
@@ -281,9 +234,14 @@ export interface EdoProfile {
 }
 
 const MAX_FIFTH_ERROR_CENTS = 15;
-// Written as subsets of 12- and 24-EDO on the Xenharmonic Wiki
+// notated as subsets of 12 and 24-EDO
 const SUBSET_EDOS = [6, 8];
 
+/**
+ * Get how pitches are sized in an EDO: by stacking fifths or proportionally
+ * @example
+ * edoProfile(22) // => { edo: 22, fifth: 13, sharp: 3, fifthErrorCents: 7.1, spelling: "fifths" }
+ */
 export function edoProfile(edo: number): EdoProfile {
   if (!isEdo(edo)) {
     return {
@@ -299,8 +257,7 @@ export function edoProfile(edo: number): EdoProfile {
   const override = overrides[edo] ?? {};
   const best = edoFifth(edo);
   let fifth = override.fifth ?? best;
-  // a minor second (3 octaves less 5 fifths) must not descend; the
-  // proportional fallback keeps the best fifth, as before it existed
+  // the minor second must not descend (13 and 18-EDO)
   if (
     override.fifth === undefined &&
     globalSpelling === "fifths" &&
@@ -322,17 +279,10 @@ export function edoProfile(edo: number): EdoProfile {
   return (profileCache[key] = { edo, fifth, sharp, fifthErrorCents, spelling });
 }
 
-// Round half away from zero, so descending sizes mirror ascending ones
 const roundSymmetric = (n: number) => Math.sign(n) * Math.round(Math.abs(n));
 
 /**
- * Signed size of a pitch, in steps of the given EDO. For notes with octave
- * it is the absolute height (C0 = 0), for pitch classes it's the distance
- * above C, and for intervals the (directed) size.
- *
- * In 12-EDO this equals `height` for notes and `semitones` for intervals.
- * In "proportional" EDOs (see `edoProfile`) the 12-TET size is scaled to the
- * EDO instead of stacking fifths.
+ * Get the size of a pitch in steps of an EDO (C0 = 0 for notes)
  */
 export function edoSteps(pitch: Pitch, edo = 12): number {
   if (!isEdo(edo)) return NaN;
@@ -340,33 +290,25 @@ export function edoSteps(pitch: Pitch, edo = 12): number {
   const ups = (pitch.dir ?? 1) * (pitch.ups ?? 0);
   let steps: number;
   if (edoProfile(edo).spelling === "proportional") {
-    // pitch classes are reduced to one octave before scaling, so each one
-    // rounds like its own interval above C
     const semitones = pitch.oct === undefined ? mod(f * 7, 12) : f * 7 + o * 12;
     steps = roundSymmetric((semitones * edo) / 12) + ups;
   } else {
     steps = f * edoProfile(edo).fifth + o * edo + ups;
   }
-  // pitch classes have no octave: reduce to 0..edo-1 above C
   return pitch.oct === undefined ? mod(steps, edo) : steps;
 }
 
 /**
- * Pitch class of a pitch in an EDO: a number between 0 and edo - 1
+ * Get the pitch class of a pitch in an EDO (0 to edo - 1)
  */
 export function edoChroma(pitch: Pitch, edo = 12): number {
   return mod(edoSteps(pitch, edo), edo);
 }
 
 /**
- * Whether a spelling lands on or past a neighbouring natural: "B#" one step
- * above C in 41-EDO, "Fb" one step below E in 53-EDO, "E#" on F in 12-EDO.
- * Such spellings read as the wrong letter, so EDO spellings avoid them. For
- * intervals the naturals are the degrees of the major scale.
- *
+ * Test if a pitch lands on or past a neighbouring natural in an EDO
  * @example
  * edoCrossesNatural({ step: 6, alt: 1 }, 41) // => true (B# is above C)
- * edoCrossesNatural({ step: 2, alt: 1 }, 19) // => false (E# is below F)
  */
 export function edoCrossesNatural(
   pitch: Pick<Pitch, "step" | "alt" | "ups">,

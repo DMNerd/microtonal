@@ -79,7 +79,6 @@ export const num = (name: string) => props(name).num;
 export function simplify(name: IntervalName): IntervalName {
   const i = props(name);
   if (i.empty) return "";
-  // Ups and downs are kept: simplify("↓10M") => "↓3M"
   const arrows = i.ups < 0 ? "↓".repeat(-i.ups) : "↑".repeat(i.ups);
   return (i.simple < 0 ? "-" : "") + arrows + Math.abs(i.simple) + i.q;
 }
@@ -104,7 +103,6 @@ export function invert(name: IntervalName): IntervalName {
   }
   const step = (7 - i.step) % 7;
   const alt = i.type === "perfectable" ? -i.alt : -(i.alt + 1);
-  // Ups flip too: invert("↓3M") => "↑6m"
   return props({ step, alt, oct: i.oct, dir: i.dir, ups: -i.ups }).name;
 }
 
@@ -196,13 +194,9 @@ export function transposeFifths(
 }
 
 /**
- * Get the (signed) size of an interval in steps of an equal division of the
- * octave. Ups and downs are one step each.
- *
+ * Get the size of an interval in steps of an EDO
  * @example
- * Interval.edoSteps("3M", 24) // => 8
- * Interval.edoSteps("↓3M", 24) // => 7 (neutral third)
- * Interval.edoSteps("-5P", 19) // => -11
+ * Interval.edoSteps("↓3M", 24) // => 7
  */
 export function edoSteps(interval: IntervalName, edo = 12): number {
   const ivl = get(interval);
@@ -210,14 +204,9 @@ export function edoSteps(interval: IntervalName, edo = 12): number {
 }
 
 /**
- * Get an interval name from its (signed) size in steps of an equal division
- * of the octave, spelled with the fewest ups and downs (like `Pcset.intervals`)
- * plus whole octaves. Returns "" for a fractional size or an invalid edo.
- *
+ * Get an interval name from its size in steps of an EDO
  * @example
- * Interval.fromEdoSteps(7, 24) // => "↑3m" (neutral third)
- * Interval.fromEdoSteps(31, 24) // => "↑10m"
- * Interval.fromEdoSteps(-11, 19) // => "-5P"
+ * Interval.fromEdoSteps(7, 24) // => "↑3m"
  */
 export const fromEdoSteps = intervalFromEdoSteps;
 
@@ -256,7 +245,6 @@ function combinator(fn: Operation, upsFn: (a: number, b: number) => number) {
     const coordB = ivlB.coord;
     if (coordA && coordB) {
       const coord = fn(coordA, coordB);
-      // signed ups: "-↑3M" contributes -1
       const ups = upsFn(ivlA.dir * ivlA.ups || 0, ivlB.dir * ivlB.ups || 0);
       return coordToInterval(coord, false, ups).name;
     }

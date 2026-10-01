@@ -23,8 +23,6 @@ export function numeric(notes: (string | number)[]): number[] {
   );
 }
 
-// Every number from each value to the next (both included); [] if any note
-// is invalid
 function fillRanges(
   notes: (string | number)[],
   toNumber: (note: string | number) => number | null | undefined,
@@ -50,11 +48,6 @@ function fillRanges(
 }
 
 export interface ChromaticOptions extends ToNoteNameOptions {
-  /**
-   * Count in steps of an equal division of the octave instead of semitones.
-   * Numbers are then EDO steps (C0 = 0), and notes are spelled like
-   * `Note.edoNames` (with sharps and ups when `sharps` is true).
-   */
   edo: number;
 }
 

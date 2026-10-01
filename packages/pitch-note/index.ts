@@ -56,10 +56,7 @@ export const accToAlt = (acc: string): number =>
   acc[0] === "b" ? -acc.length : acc.length;
 export const upsToArrows = (ups: number): string =>
   ups < 0 ? fillStr("↓", -ups) : fillStr("↑", ups);
-/**
- * Count ups minus downs in a string of ups/downs markers:
- * "↑" or "^" is an up, "↓" or "v" is a down.
- */
+
 export const arrowsToUps = (arrows: string): number => {
   let ups = 0;
   for (const ch of arrows) {
@@ -109,15 +106,10 @@ export function tokenizeNote(str: string): NoteTokens {
     : ["", "", "", ""];
 }
 
-// Ups and downs go before the note (Kite's "^C", "vEb4", or with arrows) or
-// right after the accidentals ("C↑", "Eb↓4" — the canonical spelling).
-// Accidentals must come before the suffix arrows ("C↑#" is not a note).
+// ups and downs go before the note ("^C") or after the accidentals ("C↑")
 const UPS_REGEX = /^([\^v↑↓]*)([a-gA-G](?:#+|b+|x+)?)([↑↓]*)(?![#bx])(.*)$/;
 
 /**
- * Split the ups/downs markers from a note name.
- * Returns the net number of ups and the name without the markers.
- *
  * @private
  */
 export function tokenizeUps(str: string): [number, string] {

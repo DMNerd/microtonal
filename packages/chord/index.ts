@@ -157,7 +157,6 @@ export function getChord(
 
   if (hasRoot) {
     for (let i = 1; i < rootDegree; i++) {
-      // move the lowest interval up an octave (keeping its ups or downs)
       intervals.push(add(intervals[0], "8P") ?? "");
       intervals.shift();
     }

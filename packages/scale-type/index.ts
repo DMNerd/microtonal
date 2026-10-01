@@ -32,8 +32,7 @@ export const NoScaleType: ScaleType = {
 type ScaleTypeName = string | PcsetChroma | PcsetNum;
 
 let dictionary: ScaleType[] = [];
-// Scales with ups or downs: kept apart because their 12-EDO sizes clash with
-// traditional scales. See `forEdo`.
+// scales with ups or downs: in 12-EDO they would clash with other scales
 let microtonal: ScaleType[] = [];
 let index: Record<ScaleTypeName, ScaleType> = Object.create(null);
 let edoCache: Record<string, ScaleType[]> = {};
@@ -98,16 +97,9 @@ export function allMicrotonal(): ScaleType[] {
 }
 
 /**
- * Get the scale types of an equal division of the octave (EDO), with their
- * pitch class set (chroma, setNum, normalized) computed in that EDO.
- *
- * Scales whose tones merge in that EDO are left out. Microtonal scales are
- * only included where an up is smaller than a sharp (17, 22, 24, 31...-EDO)
- * and when they are not the same set as a traditional scale.
- *
+ * Get the scale types of an EDO, with their pitch class sets in that EDO
  * @example
  * ScaleType.forEdo(24).find(t => t.name === "rast").chroma
- * // => "100010010010001000100100"
  */
 export function forEdo(edo: number): ScaleType[] {
   if (!isEdo(edo)) return [];
@@ -133,7 +125,6 @@ export function add(
   edoCache = {};
   index[scale.name] = scale;
   if (intervals.some((ivl) => interval(ivl).ups)) {
-    // only reachable by name: its 12-EDO chroma would shadow another scale
     microtonal.push(scale);
   } else {
     dictionary.push(scale);

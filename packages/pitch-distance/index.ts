@@ -36,8 +36,7 @@ export function transpose(
   if (note.empty || !intervalCoord || intervalCoord.length < 2) {
     return "";
   }
-  // Interval ups are written relative to its direction: "-↑3M" goes down by
-  // an up-major-third, so it lands one step lower than "-3M"
+  // ups count along the interval's direction: "-↑3M" lands below "-3M"
   const ups = note.ups + (ivl ? ivl.dir * ivl.ups : 0);
   const noteCoord = note.coord;
   const tr: PitchCoordinates =

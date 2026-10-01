@@ -38,7 +38,6 @@ export interface Interval extends Pitch, NamedPitch {
   readonly chroma: number;
   readonly coord: IntervalCoordinates;
   readonly oct: number;
-  /** Ups (positive) or downs (negative), as written: "-↑3M" has ups 1. */
   readonly ups: number;
 }
 
@@ -71,7 +70,6 @@ const REGEX = new RegExp(
 
 type IntervalTokens = [string, string];
 
-// Ups/downs markers go first, or right after the sign: "↑3M", "-↓5P", "^M3"
 const UPS_REGEX = /^([-+]?)([\^v↑↓]+)(.*)$/;
 
 const fillStr = (s: string, n: number) => Array(Math.abs(n) + 1).join(s);
@@ -87,9 +85,6 @@ const arrowsToUps = (arrows: string): number => {
 };
 
 /**
- * Split the ups/downs markers from an interval name.
- * Returns the net number of ups and the name without the markers.
- *
  * @private
  */
 export function tokenizeIntervalUps(str: string): [number, string] {
@@ -211,7 +206,6 @@ export function coordToInterval(
   const ivl: IntervalCoordinates =
     forceDescending || isDescending ? [-f, -o, -1] : [f, o, 1];
   const p = pitch(ivl);
-  // `ups` is the signed size change; names spell it relative to direction
   const writtenUps = ups * ivl[2];
   return interval(writtenUps ? { ...p, ups: writtenUps } : p) as Interval;
 }
@@ -256,8 +250,6 @@ function altToQ(type: Type, alt: number): Quality {
   }
 }
 
-// Interval spellings tried for each step of an EDO, most preferred first:
-// the 12-TET names, then augmented/diminished ones
 const EDO_CANDIDATES = [
   "1P",
   "2m",
@@ -283,41 +275,20 @@ const EDO_CANDIDATES = [
   "7d",
   "7A",
   "2d",
-  // only ascending where a sharp lowers (23-EDO step 1)
   "1d",
 ];
 
 const edoNamesCache: Record<string, IntervalName[]> = {};
-// An interval that crosses a neighbouring major scale degree costs more than
-// one up or down (see `edoCrossesNatural`)
+// in ups: crossing a natural or using A/d costs more than one arrow
 const CROSSING_COST = 1.5;
-// So does an augmented or diminished interval (but not the tritone): "↑3m"
-// reads better than "2A", as in ups and downs notation
 const ALTERED_COST = 1.5;
 const TRITONES = ["4A", "5d"];
-// Where a sharp is one step up or down (12, 19, 16, 23-EDO) every step has a
-// name without ups
 const NO_ARROWS_COST = 100;
 
 /**
- * Name every step of an EDO with an interval (within an octave). The name
- * with the fewest ups or downs wins, counting one and a half more for:
- *
- * - an augmented or diminished interval other than the tritone (in 31-EDO
- *   step 7 is "↓3m", not "2A")
- * - an interval that lands on or past a neighbouring major scale degree (in
- *   41-EDO step 1 is "↑1P", not "7A")
- *
- * then plain qualities (P, M, m) over augmented or diminished; then ups over
- * downs. EDOs whose sharp is one step up or down (12, 19, 16, 23) need no
- * ups or downs, so their steps are only named with sharps and flats (19-EDO
- * step 1 is "1A"). The
- * step below the octave is "↓8P". So, in 24-EDO step 7 (the neutral third)
- * is "↑3m".
- *
+ * Get the simplest interval name of every step of an EDO
  * @example
  * edoIntervalNames(24)[7] // => "↑3m"
- * edoIntervalNames(31)[7] // => "↓3m"
  */
 export function edoIntervalNames(edo: number): IntervalName[] {
   if (!isEdo(edo)) return [];
@@ -333,13 +304,9 @@ export function edoIntervalNames(edo: number): IntervalName[] {
     const fullSize = edoSteps(ivl, edo);
     const plain = /^[PMm]$/.test(ivl.q) ? 0 : 1;
     for (let step = 0; step < edo; step++) {
-      // ups needed to reach `step` from this interval, the short way round
       const diff = (((step - size) % edo) + edo) % edo;
       const ups = diff > edo / 2 ? diff - edo : diff;
-      // a name that only fits an octave down ("7A" for a small step), or
-      // where a sharp lowers, an octave up (a descending "1A"), has no
-      // spelling as an interval; a downed unison is renamed a downed octave
-      // below
+      // skip names that only fit an octave away ("7A" for a small step)
       if (fullSize + ups >= edo) continue;
       if (
         (sharp < 0 || candidate === "1d") &&
@@ -348,12 +315,9 @@ export function edoIntervalNames(edo: number): IntervalName[] {
       )
         continue;
       const crosses = edoCrossesNatural({ ...ivl, ups }, edo);
-      // the tritone is only in the middle of the octave when a sharp raises
-      // (or when sizes are proportional)
       const altered =
         plain && !((proportional || sharp > 0) && TRITONES.includes(candidate));
       const cost = [
-        // no arrows at all where a sharp is a single step
         Math.abs(ups) * (noArrows ? NO_ARROWS_COST : 1) +
           (altered && !noArrows ? ALTERED_COST : 0) +
           (crosses ? CROSSING_COST : 0),
@@ -368,29 +332,21 @@ export function edoIntervalNames(edo: number): IntervalName[] {
       }
     }
   });
-  // the step below the octave is a downed octave, not a downed unison
   return (edoNamesCache[key] = best.map((b) =>
     b.name.replace(/^(↓+)1P$/, "$18P"),
   ));
 }
 
 /**
- * Get an interval from its (signed) size in steps of an EDO: the simplest
- * spelling of that step (see `edoIntervalNames`) plus whole octaves.
- * Negative sizes give descending intervals. Returns "" for a fractional size
- * or an invalid edo.
- *
+ * Get an interval name from its size in steps of an EDO
  * @example
  * intervalFromEdoSteps(7, 24) // => "↑3m"
- * intervalFromEdoSteps(31, 24) // => "↑10m"
  * intervalFromEdoSteps(-7, 24) // => "-↑3m"
- * intervalFromEdoSteps(40, 41) // => "↓8P" (an octave less one step)
  */
 export function intervalFromEdoSteps(steps: number, edo = 12): IntervalName {
   if (!Number.isInteger(steps) || !isEdo(edo)) return "";
   const size = Math.abs(steps);
   const base = interval(edoIntervalNames(edo)[size % edo]);
-  // the simplest name can be off by octaves: "↓1P" is one step below 1P
   const octaves = (size - edoSteps(base, edo)) / edo;
   const arrows = base.ups < 0 ? "↓".repeat(-base.ups) : "↑".repeat(base.ups);
   const name = arrows + (base.num + 7 * octaves) + base.q;

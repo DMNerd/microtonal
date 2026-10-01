@@ -30,12 +30,7 @@ import { Note, NoteName, note } from "@tonaljs/pitch-note";
  * @param {number} length - the number of notes of the pitch class set
  * @param {IntervalName[]} intervals - the intervals of the pitch class set
  * *starting from C*
- * @param {number} edo - the number of equal divisions of the octave of the
- * set, which is the length of the chroma (12 for traditional sets)
- *
- * Sets of other equal divisions of the octave (EDOs) have a chroma of that
- * length: a 24-char chroma is a set of quarter tones. For those, `setNum` is
- * only exact up to 53-EDO; use the chroma to identify larger sets.
+ * @param {number} edo - the EDO of the set (the length of the chroma)
  */
 export interface Pcset {
   readonly name: string;
@@ -57,10 +52,6 @@ export const EmptyPcset: Pcset = {
   edo: 12,
 };
 
-/**
- * Options to build a pitch class set from a note, interval or set number:
- * - edo: the number of equal divisions of the octave (12 by default)
- */
 export interface PcsetOptions {
   edo: number;
 }
@@ -75,12 +66,10 @@ const chromaToNumber = (chroma: string): number => parseInt(chroma, 2);
 const REGEX = /^[01]+$/;
 const emptyChroma = (edo: number) => "0".repeat(edo);
 
-// 12 when no edo is given, NaN when it is not an EDO (see `edoOption`)
 const edoOf = (options: unknown): number => edoOption(options) ?? 12;
 
 /**
- * Test if a value is a chroma: a string of "0" and "1" of length `edo`
- * (12 by default)
+ * Test if a value is a chroma of the given EDO (12 by default)
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function isChroma(set: any, edo = 12): set is PcsetChroma {
@@ -97,8 +86,6 @@ const isPcset = (set: any): set is Pcset =>
   typeof set.chroma === "string" &&
   isChroma(set.chroma, set.chroma.length);
 
-// Keyed by EDO profile and chroma: a set's interval names depend on how the
-// EDO is spelled (see `edoKey`)
 const cache: { [key in string]: Pcset } = {};
 
 /**
@@ -113,14 +100,7 @@ export type Set =
 
 /**
  * Get the pitch class set of a collection of notes or set number or chroma
- *
- * Use the `edo` option to build sets of other equal divisions of the octave.
- * A chroma must have `edo` characters to be valid (so 12 by default), while
- * a pcset object keeps its own edo.
- *
- * @example
- * Pcset.get(["C", "E↓", "G"], { edo: 24 }).chroma
- * // => "100000010000001000000000"
+ * Pcset.get(["C", "E↓", "G"], { edo: 24 }).chroma // => "100000010000001000000000"
  */
 export function get(src: Set, options?: Partial<PcsetOptions>): Pcset {
   const edo = edoOf(options);
@@ -307,7 +287,6 @@ export function isSupersetOf(set: Set) {
   };
 }
 
-// true if every pitch class of `sub` is in `sup` (same edo only)
 function includesAll(sup: PcsetChroma, sub: PcsetChroma): boolean {
   if (sup.length !== sub.length) return false;
   for (let i = 0; i < sub.length; i++) {
@@ -360,27 +339,12 @@ export function filter(set: Set) {
   };
 }
 
-/**
- * A dictionary entry (chord type, scale type...) defined by its intervals
- */
 export interface IntervalSetType extends Pcset {
   readonly name: string;
   readonly intervals: IntervalName[];
 }
 
 /**
- * Project a dictionary of types (like chord or scale types) into an equal
- * division of the octave. Each type gets the pitch class set of its
- * intervals in that EDO; everything else (name, intervals spelling, aliases)
- * is kept.
- *
- * - Types whose tones merge in that EDO are left out.
- * - Microtonal types (with ups or downs) are only included in EDOs where an
- *   up is smaller than a sharp (edoSharp >= 2) and the EDO is spelled by
- *   fifths (see `edoProfile`), and only when they are not
- *   the same set as a traditional type. When two of them are the same set,
- *   the first one wins.
- *
  * @private
  */
 export function projectTypesToEdo<T extends IntervalSetType>(
@@ -430,10 +394,7 @@ export default {
 
 //// PRIVATE ////
 
-// The smallest rotation that starts with a pitch class, in any EDO, or
-// undefined for the empty set. Compares the rotations in place on the chroma
-// written twice instead of building them (upstream rotates the 12-bit set
-// number with bit shifts, which can't hold EDOs past 31).
+// the smallest rotation that starts with a pitch class
 function normalizeChroma(chroma: PcsetChroma): PcsetChroma | undefined {
   const edo = chroma.length;
   const twice = chroma + chroma;

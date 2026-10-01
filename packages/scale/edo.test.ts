@@ -57,10 +57,11 @@ describe("scales in other EDOs", () => {
     expect(Scale.modeNames("C major", { edo: 31 })).toEqual(
       Scale.modeNames("C major"),
     );
-    // sikah, nairuz and 'iraq use the notes of rast, starting from E↓, G
-    // and B↓
+    // husayni, sikah, nairuz and 'iraq use the notes of rast, starting from
+    // D, E↓, G and B↓
     expect(Scale.modeNames("C rast", Q24)).toEqual([
       ["C", "rast"],
+      ["D", "husayni"],
       ["E↓", "sikah"],
       ["G", "nairuz"],
       ["B↓", "iraq"],

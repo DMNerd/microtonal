@@ -457,15 +457,21 @@ A microtonal scale dictionary is added: Arabic maqamat (ascending forms, from
 | suznak       | 1P 2M ↓3M 4P 5P 6m 7M      | C D E↓ F G Ab B           |
 | mahur        | 1P 2M ↓3M 4P 5P 6M 7M      | C D E↓ F G A B            |
 | bayati shuri | 1P ↓2M 3m 4P 5d 6M 7m      | D E↓ F G Ab B C           |
+| husayni      | 1P ↓2M 3m 4P 5P ↓6M 7m     | D E↓ F G A B↓ C           |
+| hijaz        | 1P 2m 3M 4P 5P ↓6M 7m      | D Eb F# G A B↓ C          |
 
 Maqam World shows the scales as images, so huzam, 'iraq, nairuz and suznak are
 built from the ajnas each page names (huzam: Sikah on the tonic, Hijaz on the
 3rd, Rast on the 6th; 'iraq: Sikah, Bayati on the 3rd, Rast on the 6th;
 nairuz: Rast, Bayati on the 5th; suznak: Rast, Hijaz on the 5th; mahur:
-Rast, Upper 'Ajam on the 5th; bayati shuri: Bayati, Hijaz on the 4th). Maqamat
+Rast, Upper 'Ajam on the 5th; bayati shuri: Bayati, Hijaz on the 4th; hijaz:
+Hijaz, Rast on the 4th, as its Nahawand form is Tonal's phrygian dominant).
+Turkish makams with the same scale are aliases: Uşşak is bayati (Uşşak
+tetrachord plus Bûselik pentachord on Nevâ), Hüseyni is husayni (Hüseyni
+pentachord plus Uşşak tetrachord), both from their comma sizes in the AEU
+system, so 53-EDO gives the Turkish commas. Maqamat
 whose pages don't pin every note down are left out: jiharkah's 3rd and 4th
-degrees are "played lower than notated" by no fixed amount, and husayni's
-page only names its lower jins.
+degrees are "played lower than notated" by no fixed amount.
 
 The seven modes of mosh (3L 4s), the neutral third scale of mohajira, come
 from the [Xenharmonic Wiki](https://en.xen.wiki/w/3L_4s), named as there

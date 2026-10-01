@@ -28,6 +28,8 @@ describe("scale types in other EDOs", () => {
       "suznak",
       "mahur",
       "bayati shuri",
+      "husayni",
+      "hijaz",
       "dril",
       "gil",
       "kleeth",

@@ -90,10 +90,29 @@ describe("pcset in other EDOs", () => {
     expect(Pcset.intervals(["C", "E↓", "G"], Q24)).toEqual(["1P", "↑3m", "5P"]);
   });
 
+  test("interval names prefer plain qualities with ups and downs", () => {
+    // as the Xenharmonic Wiki tables write them (^M2, vm3... not 3d, 2A)
+    expect(edoIntervalNames(31).slice(0, 13)).toEqual(
+      "1P ↑1P ↓2m 2m ↑2m 2M ↑2M ↓3m 3m ↑3m 3M ↑3M ↓4P".split(" "),
+    );
+    expect(edoIntervalNames(22).slice(0, 13)).toEqual(
+      "1P 2m ↑2m ↓2M 2M 3m ↑3m ↓3M 3M 4P 5d ↑5d 4A".split(" "),
+    );
+    // the tritone keeps its usual names
+    expect(edoIntervalNames(31).slice(15, 17)).toEqual(["4A", "5d"]);
+    // no ups or downs where a sharp is one step
+    expect(edoIntervalNames(19).slice(0, 5)).toEqual(
+      "1P 1A 2m 2M 2A".split(" "),
+    );
+    // the step below the octave
+    expect(edoIntervalNames(41)[40]).toBe("↓8P");
+  });
+
   test("interval names don't cross a neighbouring major scale degree", () => {
-    // 41-EDO: 7A is a step above the octave, 4d a step below 3M
+    // 41-EDO: 7A is a step above the octave, and plain qualities with ups
+    // read better than 1A (as the Xenharmonic Wiki writes them)
     expect(edoIntervalNames(41).slice(0, 8)).toEqual(
-      "1P ↑1P ↓2m 2m 1A ↑1A ↓2M 2M".split(" "),
+      "1P ↑1P ↓2m 2m ↑2m ↑↑2m ↓2M 2M".split(" "),
     );
     // 53-EDO: 4:5:6:7 is 1P ↓3M 5P ↓7m
     const names53 = edoIntervalNames(53);

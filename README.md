@@ -36,6 +36,24 @@ For example, in 24-EDO a sharp is 2 steps and an up is 1 (a quarter-tone), so
 `E↓` is a quarter-tone below E, and a neutral third is `↓3M` (a major third,
 one step down).
 
+Spelling follows Kite's choices (plain qualities with ups and downs, e.g.
+31-EDO `↑2M`, `↓3m` rather than `3d`, `2A`; no ups or downs where a sharp is
+one step). Where the fork writes things differently, it is on purpose:
+
+- **Arrows after the note**: `Db↑`, not `^Db`, so note names keep Tonal's
+  letter-first form (`^Db` and `vE` are still accepted as input). See
+  [Notes and intervals](#notes-and-intervals).
+- **Chord symbols** put the altered degrees in parentheses (`C(↓3)`, Kite:
+  `Cv`), since `^` already means major in Tonal. See
+  [Chord types](#chord-types).
+- **No mid symbol**: Kite writes an interval exactly between major and minor
+  as mid (`~3`). The fork names it with an up or a down (`↑3m`, the same step
+  as `↓3M`), so every interval stays a Tonal quality plus arrows.
+- **Proportional EDOs**: EDOs whose fifths don't make a usable diatonic scale
+  are sized by scaling 12-TET (see
+  [EDO profiles](#notes-and-intervals)); Kite notates them by fifths (13 and
+  18-EDO with their second-best fifth).
+
 ## Status
 
 Developed on the `main` branch. Last synced with upstream Tonal `main` at
@@ -245,12 +263,15 @@ Pcset.isEqual(["C", "E↓"], ["C", "Eb↑"], { edo: 24 }); // => true
   directly. Subset and equality checks compare chromas instead of 32-bit set
   numbers, so they work for any EDO. `setNum` itself is only exact up to
   53-EDO.
-- `intervals` names each step with the simplest spelling: fewest ups/downs
-  (an interval that lands on or past a neighbouring major scale degree costs
-  one and a half more, like note names), then plain qualities (P, M, m)
-  before augmented/diminished, then ups before downs. In 24-EDO the neutral
-  third is `↑3m`; in 19-EDO step 1 is `1A`; in 41-EDO step 1 is `↑1P`, not
-  `7A`, and in 53-EDO 4:5:6:7 is `1P ↓3M 5P ↓7m`.
+- `intervals` names each step with the simplest spelling: fewest ups/downs,
+  where an augmented or diminished interval (other than the tritone) and an
+  interval that lands on or past a neighbouring major scale degree each cost
+  one and a half more; then plain qualities (P, M, m) before
+  augmented/diminished, then ups before downs. EDOs whose sharp is one step
+  (12, 19) use no ups or downs, and the step below the octave is `↓8P`. In
+  24-EDO the neutral third is `↑3m`; in 31-EDO step 7 is `↓3m`, not `2A`; in
+  19-EDO step 1 is `1A`; in 41-EDO step 1 is `↑1P`, not `7A`, and in 53-EDO
+  4:5:6:7 is `1P ↓3M 5P ↓7m`.
 - `Pcset.chromas()` still lists the 12-EDO chromas only.
 - `normalized` (the smallest rotation starting with a pitch class) is found by
   comparing rotations in place on the chroma written twice, for every EDO.

@@ -1,5 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { freqToMidi, midiToNoteName } from "@tonaljs/midi";
+import {
+  MidiBend,
+  freqToMidi,
+  freqToMidiBend,
+  midiToNoteName,
+} from "@tonaljs/midi";
 import {
   Pitch,
   edoChroma as pitchEdoChroma,
@@ -142,6 +147,24 @@ export function edoFreq(
   }
   const steps = pitchEdoSteps(n, edo) - pitchEdoSteps(ref, edo);
   return refFreq * Math.pow(2, steps / edo);
+}
+
+/**
+ * Get the midi number and pitch bend that play a note of an EDO
+ * (see `Midi.freqToMidiBend`)
+ * @example
+ * Note.edoMidi("E↓4", 24) // => { midi: 64, cents: -50, bend: 6144 }
+ * Note.edoMidi("E↓4", 24, { bendRange: 12 }).bend // => 7851
+ */
+export function edoMidi(
+  noteName: NoteLiteral,
+  edo = 12,
+  options: { refNote?: NoteLiteral; refFreq?: number; bendRange?: number } = {},
+): MidiBend | null {
+  const freq = edoFreq(noteName, edo, options);
+  return freq === null
+    ? null
+    : freqToMidiBend(freq, { bendRange: options.bendRange });
 }
 
 export type EdoAccidental = "sharp" | "flat";
@@ -531,6 +554,7 @@ export default {
   edoSteps,
   edoChroma,
   edoFreq,
+  edoMidi,
   edoNames,
   fromEdoSteps,
   transposeEdoSteps,

@@ -148,6 +148,7 @@ exports[`tonal > Modules exports functions 1`] = `
   "Midi": [
     "chroma",
     "freqToMidi",
+    "freqToMidiBend",
     "isMidi",
     "midiToFreq",
     "midiToNoteName",
@@ -177,6 +178,7 @@ exports[`tonal > Modules exports functions 1`] = `
     "distance",
     "edoChroma",
     "edoFreq",
+    "edoMidi",
     "edoNames",
     "edoSteps",
     "enharmonic",

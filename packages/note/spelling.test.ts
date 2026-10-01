@@ -133,3 +133,22 @@ describe("transposeEdoSteps", () => {
     }
   });
 });
+
+describe("edoMidi", () => {
+  test("midi number and pitch bend of an EDO note", () => {
+    expect(Note.edoMidi("E↓4", 24)).toEqual({
+      midi: 64,
+      cents: -50,
+      bend: 6144,
+    });
+    expect(Note.edoMidi("E↓4", 24, { bendRange: 12 })?.bend).toBe(7851);
+    expect(Note.edoMidi("A4", 31)).toEqual({ midi: 69, cents: 0, bend: 8192 });
+    expect(Note.edoMidi("C↑4", 31)?.cents).toBe(48.39);
+  });
+
+  test("null for pitch classes and invalid notes", () => {
+    expect(Note.edoMidi("E", 24)).toBeNull();
+    expect(Note.edoMidi("X4", 24)).toBeNull();
+    expect(Note.edoMidi("C4", 0)).toBeNull();
+  });
+});

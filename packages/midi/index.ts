@@ -63,6 +63,38 @@ export function freqToMidi(freq: number): number {
   return Math.round(v * 100) / 100;
 }
 
+export interface MidiBend {
+  midi: number;
+  cents: number;
+  bend: number;
+}
+
+/**
+ * Get the nearest midi number of a frequency, and the pitch bend (14-bit,
+ * 8192 is none) that reaches it with a bend range of ±2 semitones by default
+ *
+ * @example
+ * import { freqToMidiBend } from '@tonaljs/midi'
+ * freqToMidiBend(450) // => { midi: 69, cents: 38.91, bend: 9786 }
+ * freqToMidiBend(450, { bendRange: 12 }) // => { midi: 69, cents: 38.91, bend: 8458 }
+ */
+export function freqToMidiBend(
+  freq: number,
+  { tuning = 440, bendRange = 2 } = {},
+): MidiBend | null {
+  if (!(freq > 0) || !(bendRange > 0)) return null;
+  const exact = 12 * Math.log2(freq / tuning) + 69;
+  const midi = Math.round(exact);
+  if (midi < 0 || midi > 127) return null;
+  const offset = exact - midi;
+  const bend = Math.round(8192 + (offset / bendRange) * 8192);
+  return {
+    midi,
+    cents: Math.round(offset * 10000) / 100,
+    bend: Math.max(0, Math.min(16383, bend)),
+  };
+}
+
 export interface ToNoteNameOptions {
   pitchClass?: boolean;
   sharps?: boolean;
@@ -183,6 +215,7 @@ export function pcsetDegrees(notes: number[] | string, tonic: number) {
 export default {
   chroma,
   freqToMidi,
+  freqToMidiBend,
   isMidi,
   midiToFreq,
   midiToNoteName,

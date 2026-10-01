@@ -84,9 +84,10 @@ Developed on the `main` branch. Last synced with upstream Tonal `main` at
 7. **More microtonal chords** — _done_: harmonic and subharmonic chords
    (`har7`, `sub7`…) built per EDO from their ratios
    (`ChordType.addFromRatios`, `Chord.get(name, { edo })`).
+8. **Microtonal MIDI** — _done_: `Note.edoMidi` and `Midi.freqToMidiBend`
+   (MIDI note plus pitch bend).
 
-Planned, roughly in order: microtonal MIDI (pitch bend), and publishing under
-the fork's own package names.
+Planned: publishing under the fork's own package names.
 
 ### Syncing with upstream
 
@@ -189,13 +190,17 @@ time.
 Microtonal chords and scales are only offered in EDOs spelled by fifths with
 a sharp of at least two steps.
 
-**Frequencies and step names.** `Note.edoFreq` tunes a note in any EDO
-(A4 = 440Hz unless you pass another reference), and `Note.fromEdoSteps` names
-an EDO step:
+**Frequencies, MIDI and step names.** `Note.edoFreq` tunes a note in any
+EDO (A4 = 440Hz unless you pass another reference), `Note.edoMidi` gives the
+MIDI note and 14-bit pitch bend that play it (8192 is no bend; the bend range
+is ±2 semitones unless `bendRange` is set, and it must match the synth's), and
+`Note.fromEdoSteps` names an EDO step. `Midi.freqToMidiBend(freq)` does the
+MIDI part for any frequency:
 
 ```js
 Note.edoFreq("A↑4", 24); // => 452.89…  (a quarter tone above A4)
 Note.edoFreq("C4", 19, { refNote: "C4", refFreq: 256 }); // => 256
+Note.edoMidi("E↓4", 24); // => { midi: 64, cents: -50, bend: 6144 }
 Note.fromEdoSteps(104, 24); // => "E4"   (C0 = 0)
 Note.fromEdoSteps(103, 24); // => "Eb↑4"
 Note.fromEdoSteps(7, 24, { pitchClass: true }); // => "Eb↑"
@@ -561,7 +566,7 @@ Range.chromatic(["C4", "D4"], { edo: 24, sharps: true });
 
 #### Not converted
 
-These stay 12-TET: `midi` and `Note.freq`/`Note.midi` (use `Note.edoFreq`),
+These stay 12-TET: `Note.freq`/`Note.midi` (use `Note.edoFreq`/`Note.edoMidi`),
 `Range.numeric`, `voicing`, `voice-leading` and
 `voicing-dictionary`, `Pcset.chromas()`, the `chroma`/`setNum` fields of
 `Chord.get`, `Scale.get` and the dictionaries (use `forEdo` or

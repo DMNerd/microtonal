@@ -42,6 +42,15 @@ describe("detect in other EDOs", () => {
     expect(detect(["C", "E↓", "G"], { edo: 31 })).toEqual(["C(↓3)"]);
   });
 
+  test("7-limit chords", () => {
+    // 4:5:6:7, the harmonic seventh
+    expect(detect(["C", "E", "G", "Bb↓"], Q24)[0]).toBe("C7(↓7)");
+    expect(detect(["C", "E", "G", "Bb↓"], { edo: 31 })[0]).toBe("C7(↓7)");
+    expect(detect(["C", "E↓", "G", "Bb↓"], { edo: 53 })[0]).toBe("C7(↓3,↓7)");
+    // 12:14:18:21, the subminor seventh
+    expect(detect(["C", "Eb↓", "G", "Bb↓"], { edo: 31 })[0]).toBe("Cm7(↓3,↓7)");
+  });
+
   test("assumePerfectFifth in 24-EDO", () => {
     expect(
       detect(["C", "E", "B"], { ...Q24, assumePerfectFifth: true }),

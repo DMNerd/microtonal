@@ -247,9 +247,17 @@ A microtonal chord dictionary is added, spelled in ups and downs:
 | suspended upfourth               | 1P ↑4P 5P     | `sus↑4`     |
 | dominant seventh downmajor third | 1P ↓3M 5P 7m  | `7(↓3)`     |
 | downmajor seventh                | 1P ↓3M 5P ↓7m | `7(↓3,↓7)`  |
+| harmonic seventh                 | 1P 3M 5P ↓7m  | `7(↓7)`     |
 | upminor seventh                  | 1P ↑3m 5P ↑7m | `m7(↑3,↑7)` |
+| downminor seventh                | 1P ↓3m 5P ↓7m | `m7(↓3,↓7)` |
 | major seventh downmajor third    | 1P ↓3M 5P 7M  | `maj7(↓3)`  |
 | minor downmajor seventh          | 1P 3m 5P ↓7M  | `m(↓maj7)`  |
+
+The 7-limit chords are found where they are spelled this way: 4:5:6:7 is
+`7(↓7)` in 24- and 31-EDO, `7(↓3)` in 22-EDO and `7(↓3,↓7)` in 41- and
+53-EDO; 12:14:18:21 is `m7(↓3,↓7)` in 24, 31, 41 and 53-EDO (plain `m7` in
+22-EDO). EDOs that need two ups or downs for them (72-EDO) and EDOs without
+ups (19-EDO, where 4:5:6:7 is `1P 3M 5P 6A`) don't name them yet.
 
 Symbols put the altered degrees in parentheses: `^` already means major in
 Tonal (`C^7`), and an arrow straight after the root is read as part of the

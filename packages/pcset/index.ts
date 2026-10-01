@@ -424,19 +424,46 @@ export default {
 
 //// PRIVATE ////
 
+// rotate chroma using its set number only with bit shifting operations
+function rotateChroma(v: number): number {
+  return ((v << 1) | (v >>> 11)) & 0xfff;
+}
+
+// the smallest rotation that starts with a pitch class (12-EDO, upstream's
+// bit-shifting version). Undefined for the empty set.
+function normalize12(setNum: number): PcsetChroma | undefined {
+  if (setNum === 0) return undefined;
+  let normalizedNum = Infinity;
+  let r = setNum;
+  for (let i = 0; i < 12; i++) {
+    if (r >= 2048 && r < normalizedNum) normalizedNum = r;
+    r = rotateChroma(r);
+  }
+  return setNumToChroma(normalizedNum);
+}
+
 function chromaRotations(chroma: string): string[] {
   const binary = chroma.split("");
   return binary.map((_, i) => rotate(i, binary).join(""));
 }
 
+// the smallest rotation that starts with a pitch class, in any EDO
+function normalizeEdo(chroma: PcsetChroma, edo: number): PcsetChroma {
+  return (
+    chromaRotations(chroma)
+      .filter((r) => r[0] === "1")
+      .sort()[0] ?? emptyChroma(edo)
+  );
+}
+
 function chromaToPcset(chroma: PcsetChroma): Pcset {
   const edo = chroma.length;
   const setNum = chromaToNumber(chroma);
-  // the smallest rotation that starts with a pitch class
   const normalized =
-    chromaRotations(chroma)
-      .filter((r) => r[0] === "1")
-      .sort()[0] ?? emptyChroma(edo);
+    edo === 12 ? normalize12(setNum) : normalizeEdo(chroma, edo);
+  if (normalized === undefined) {
+    return EmptyPcset;
+  }
 
   const intervals = chromaToIntervals(chroma);
 

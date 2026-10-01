@@ -34,7 +34,7 @@ let dictionary: ScaleType[] = [];
 // Scales with ups or downs: kept apart because their 12-EDO sizes clash with
 // traditional scales. See `forEdo`.
 let microtonal: ScaleType[] = [];
-let index: Record<ScaleTypeName, ScaleType> = {};
+let index: Record<ScaleTypeName, ScaleType> = Object.create(null);
 let edoCache: Record<number, ScaleType[]> = {};
 
 export function names() {
@@ -85,7 +85,7 @@ export function keys() {
 export function removeAll() {
   dictionary = [];
   microtonal = [];
-  index = {};
+  index = Object.create(null);
   edoCache = {};
 }
 

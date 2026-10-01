@@ -60,7 +60,7 @@ const INTERVAL_TONAL_REGEX = "([-+]?\\d+)(d{1,4}|m|M|P|A{1,4})";
 // standard shorthand notation (with quality before number)
 const INTERVAL_SHORTHAND_REGEX = "(AA|A|P|M|m|d|dd)([-+]?\\d+)";
 const REGEX = new RegExp(
-  "^" + INTERVAL_TONAL_REGEX + "|" + INTERVAL_SHORTHAND_REGEX + "$",
+  "^(?:" + INTERVAL_TONAL_REGEX + "|" + INTERVAL_SHORTHAND_REGEX + ")$",
 );
 
 type IntervalTokens = [string, string];
@@ -102,7 +102,7 @@ export function tokenizeInterval(str?: IntervalName): IntervalTokens {
   return m[1] ? [m[1], m[2]] : [m[4], m[3]];
 }
 
-const cache: { [key in string]: Interval } = {};
+const cache = new Map<string, Interval>();
 
 /**
  * Get interval properties. It returns an object with:
@@ -126,12 +126,22 @@ const cache: { [key in string]: Interval } = {};
  */
 export function interval(src: IntervalLiteral): Interval {
   return typeof src === "string"
-    ? cache[src] || (cache[src] = parse(src))
+    ? cached(src)
     : isPitch(src)
       ? interval(pitchName(src))
       : isNamedPitch(src)
         ? interval(src.name)
         : NoInterval;
+}
+
+// Only valid intervals are cached, so arbitrary input can't grow the cache
+function cached(src: string): Interval {
+  let value = cache.get(src);
+  if (!value) {
+    value = parse(src);
+    if (!value.empty) cache.set(src, value);
+  }
+  return value;
 }
 
 const SIZES = [0, 2, 4, 5, 7, 9, 11];
@@ -143,6 +153,9 @@ function parse(fullStr?: string): Interval {
     return NoInterval;
   }
   const num = +tokens[0];
+  if (num === 0) {
+    return NoInterval;
+  }
   const q = tokens[1] as Quality;
   const step = (Math.abs(num) - 1) % 7;
   const t = TYPES[step];

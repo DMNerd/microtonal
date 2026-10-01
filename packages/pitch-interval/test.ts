@@ -47,6 +47,26 @@ describe("interval", () => {
       expect(interval("not-an-interval").empty).toEqual(true);
       expect(interval("2P").empty).toBe(true);
     });
+
+    test("rejects malformed intervals", () => {
+      expect(interval("ddd5").empty).toBe(true);
+      expect(interval("AAA5").empty).toBe(true);
+      expect(interval("garbageP5").empty).toBe(true);
+      expect(interval("5Pgarbage").empty).toBe(true);
+      expect(tokenize("ddd5")).toEqual(["", ""]);
+      expect(tokenize("AAA5")).toEqual(["", ""]);
+      expect(tokenize("garbageP5")).toEqual(["", ""]);
+      expect(tokenize("5Pgarbage")).toEqual(["", ""]);
+    });
+
+    test("rejects interval number 0", () => {
+      expect(interval("0P").empty).toBe(true);
+      expect(interval("0M").empty).toBe(true);
+      expect(interval("-0A").empty).toBe(true);
+      expect(interval("P0").empty).toBe(true);
+      expect(interval("1P").empty).toBe(false);
+      expect(interval("-1P").empty).toBe(false);
+    });
     test("q", () => {
       const q = (str: string) => str.split(" ").map((i) => interval(i).q);
       expect(q("1dd 1d 1P 1A 1AA")).toEqual(["dd", "d", "P", "A", "AA"]);
@@ -91,5 +111,18 @@ describe("interval", () => {
       expect(interval({ step: 1, alt: -1, oct: 1, dir: -1 }).name).toBe("-9m");
       expect(interval({ step: 0, alt: 0, oct: 0, dir: 1 }).name).toBe("1P");
     });
+  });
+});
+
+describe("interval input safety", () => {
+  test("Object.prototype keys are not intervals", () => {
+    for (const key of [
+      "constructor",
+      "toString",
+      "__proto__",
+      "hasOwnProperty",
+    ]) {
+      expect(interval(key).empty).toBe(true);
+    }
   });
 });

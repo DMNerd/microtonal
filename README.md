@@ -38,7 +38,8 @@ one step down).
 
 ## Status
 
-Work in progress on the `edo-ups-downs` branch.
+Developed on the `main` branch. Last synced with upstream Tonal `main` at
+[`a1b98c3`](https://github.com/tonaljs/tonal/commit/a1b98c3c) (2026-10-01).
 
 1. **Core pitch model** — _done_ (`pitch`, `pitch-note`, `pitch-interval`,
    `pitch-distance`, plus the `note` and `interval` helpers). See
@@ -218,6 +219,9 @@ Pcset.isEqual(["C", "E↓"], ["C", "Eb↑"], { edo: 24 }); // => true
   then plain qualities (P, M, m) before augmented/diminished, then ups before
   downs. In 24-EDO the neutral third is `↑3m`; in 19-EDO step 1 is `1A`.
 - `Pcset.chromas()` still lists the 12-EDO chromas only.
+- `normalized` uses upstream's bit-shifting rotation for 12-EDO sets and
+  string rotations for other EDOs (bit shifts on 32-bit integers can't hold
+  larger EDOs).
 
 #### Chord types
 
@@ -242,7 +246,7 @@ Tonal (`C^7`), and an arrow straight after the root is read as part of the
 root (`C↓7` is a C↓ dominant seventh).
 
 - `ChordType.get` finds these by name or symbol. `ChordType.all()` still
-  returns only the 106 traditional chords, and the 12-EDO chroma index is
+  returns only the 107 traditional chords, and the 12-EDO chroma index is
   untouched: in 12-EDO `↓3M` is just `3m`, so a downmajor chord would
   otherwise shadow the minor chord. `ChordType.allMicrotonal()` lists them.
 - `ChordType.forEdo(edo)` returns the chord types of an EDO, with `chroma`,
@@ -382,7 +386,9 @@ the same ambiguity upstream has with `Cb9sus`.
 
 #### 12-TET compatibility
 
-Every upstream test still passes. The only changes to them add the new `ups: 0`
+Every upstream test still passes. Upstream fixes are merged in as they land
+(see [Status](#status) for the last sync); the upstream `maj11` chord type is
+named, so it ranks with the core chords in detection. The only changes to them add the new `ups: 0`
 and `edo: 12` fields to expected property objects and snapshots. Legacy
 properties such as `chroma`, `midi`, `height`, `semitones` and `freq` stay
 12-TET; they treat an up or down as one semitone, which is its size in

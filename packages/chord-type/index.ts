@@ -32,10 +32,10 @@ let dictionary: ChordType[] = [];
 // Chords with ups or downs: kept apart because their 12-EDO sizes clash with
 // traditional chords ("↓3M" is "3m" in 12-EDO). See `forEdo`.
 let microtonal: ChordType[] = [];
-let index: Record<ChordTypeName, ChordType> = {};
+let index: Record<ChordTypeName, ChordType> = Object.create(null);
 let edoCache: Record<number, ChordType[]> = {};
 // How established each chord type is, by interval spelling. See `tier`.
-let tiers: Record<string, number> = {};
+let tiers: Record<string, number> = Object.create(null);
 
 /**
  * Given a chord name or chroma, return the chord properties
@@ -117,9 +117,9 @@ export function forEdo(edo: number): ChordType[] {
 export function removeAll() {
   dictionary = [];
   microtonal = [];
-  index = {};
+  index = Object.create(null);
   edoCache = {};
-  tiers = {};
+  tiers = Object.create(null);
 }
 
 /**

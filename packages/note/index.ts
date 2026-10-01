@@ -3,6 +3,7 @@ import { freqToMidi, midiToNoteName } from "@tonaljs/midi";
 import {
   Pitch,
   edoChroma as pitchEdoChroma,
+  edoCrossesNatural,
   edoSteps as pitchEdoSteps,
 } from "@tonaljs/pitch";
 import { distance as _dist, transpose as _tr } from "@tonaljs/pitch-distance";
@@ -146,6 +147,9 @@ export type EdoAccidental = "sharp" | "flat";
 const LETTERS = ["C", "D", "E", "F", "G", "A", "B"];
 const SPELLING_ACCIDENTALS = ["", "#", "b", "##", "bb"];
 const spellingCache: Record<string, string[]> = {};
+// A spelling that crosses a neighbouring natural costs more than one up or
+// down (see `edoCrossesNatural`)
+const CROSSING_COST = 1.5;
 
 /**
  * Spell every pitch class of an EDO with a sharp or flat preference.
@@ -153,7 +157,9 @@ const spellingCache: Record<string, string[]> = {};
  * ups or downs) the winner has, in order:
  *
  * 1. the fewest ups or downs, counting a double sharp or flat as one more
- *    (in 31-EDO step 1 is "C↑", not "B##")
+ *    (in 31-EDO step 1 is "C↑", not "B##"), and a spelling that lands on or
+ *    past a neighbouring natural as one and a half more (in 41-EDO step 1
+ *    is "C↑", not "B#"; in 53-EDO step 17 is "E↓", not "Fb")
  * 2. ups for the sharp view, downs for the flat view
  * 3. the fewest accidentals
  * 4. no E#, B#, Cb or Fb (in 17-EDO step 1 is "Db", not "B#")
@@ -178,8 +184,11 @@ export function edoNames(edo: number, accidental: EdoAccidental): string[] {
       for (let chroma = 0; chroma < edo; chroma++) {
         const diff = (((chroma - size) % edo) + edo) % edo;
         const ups = diff > edo / 2 ? diff - edo : diff;
+        const pitch = { ...props(letter + acc), ups };
         const cost = [
-          Math.abs(ups) + (acc.length > 1 ? 1 : 0),
+          Math.abs(ups) +
+            (acc.length > 1 ? 1 : 0) +
+            (edoCrossesNatural(pitch, edo) ? CROSSING_COST : 0),
           ups === 0 || ups > 0 === preferUps ? 0 : 1,
           acc.length,
           (acc[0] === "#" && (letter === "E" || letter === "B")) ||
@@ -191,7 +200,7 @@ export function edoNames(edo: number, accidental: EdoAccidental): string[] {
         const current = best[chroma];
         if (!current || compareCosts(cost, current.cost) < 0) {
           best[chroma] = {
-            name: props({ ...props(letter + acc), ups }).name,
+            name: props(pitch).name,
             cost,
           };
         }

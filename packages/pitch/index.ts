@@ -218,3 +218,28 @@ export function edoSteps(pitch: Pitch, edo = 12): number {
 export function edoChroma(pitch: Pitch, edo = 12): number {
   return mod(edoSteps(pitch, edo), edo);
 }
+
+/**
+ * Whether a spelling lands on or past a neighbouring natural: "B#" one step
+ * above C in 41-EDO, "Fb" one step below E in 53-EDO, "E#" on F in 12-EDO.
+ * Such spellings read as the wrong letter, so EDO spellings avoid them. For
+ * intervals the naturals are the degrees of the major scale.
+ *
+ * @example
+ * edoCrossesNatural({ step: 6, alt: 1 }, 41) // => true (B# is above C)
+ * edoCrossesNatural({ step: 2, alt: 1 }, 19) // => false (E# is below F)
+ */
+export function edoCrossesNatural(
+  pitch: Pick<Pitch, "step" | "alt" | "ups">,
+  edo: number,
+): boolean {
+  const natural = (step: number) =>
+    edoChroma({ step: mod(step, 7), alt: 0 }, edo);
+  const own = natural(pitch.step);
+  const diff = mod(edoChroma(pitch, edo) - own, edo);
+  const offset = diff > edo / 2 ? diff - edo : diff;
+  if (offset === 0) return false;
+  return offset > 0
+    ? offset >= mod(natural(pitch.step + 1) - own, edo)
+    : -offset >= mod(own - natural(pitch.step - 1), edo);
+}

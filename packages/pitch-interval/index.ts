@@ -2,6 +2,7 @@ import {
   coordinates,
   Direction,
   edoChroma,
+  edoCrossesNatural,
   IntervalCoordinates,
   isNamedPitch,
   isPitch,
@@ -280,10 +281,15 @@ const EDO_CANDIDATES = [
 ];
 
 const edoNamesCache: Record<number, IntervalName[]> = {};
+// An interval that crosses a neighbouring major scale degree costs more than
+// one up or down (see `edoCrossesNatural`)
+const CROSSING_COST = 1.5;
 
 /**
  * Name every step of an EDO with an interval (within an octave). The name
- * with the fewest ups or downs wins; then plain qualities (P, M, m) over
+ * with the fewest ups or downs wins, counting an interval that lands on or
+ * past a neighbouring major scale degree as one and a half more (in 41-EDO
+ * step 1 is "↑1P", not "7A"); then plain qualities (P, M, m) over
  * augmented or diminished; then ups over downs. So, in 24-EDO step 7 (the
  * neutral third) is "↑3m" and in 19-EDO step 1 is "1A".
  *
@@ -301,7 +307,13 @@ export function edoIntervalNames(edo: number): IntervalName[] {
       // ups needed to reach `step` from this interval, the short way round
       const diff = (((step - size) % edo) + edo) % edo;
       const ups = diff > edo / 2 ? diff - edo : diff;
-      const cost = [Math.abs(ups), plain, ups < 0 ? 1 : 0, order];
+      const crosses = edoCrossesNatural({ ...ivl, ups }, edo);
+      const cost = [
+        Math.abs(ups) + (crosses ? CROSSING_COST : 0),
+        plain,
+        ups < 0 ? 1 : 0,
+        order,
+      ];
       const current = best[step];
       if (!current || compareCosts(cost, current.cost) < 0) {
         const arrows = ups < 0 ? "↓".repeat(-ups) : "↑".repeat(ups);

@@ -46,8 +46,21 @@ describe("edoNames", () => {
 
   test("17- and 22-EDO avoid E#, B#, Cb and Fb when they can", () => {
     expect(Note.edoNames(17, "sharp").slice(0, 4)).toEqual($("C Db C# D"));
-    // 22-EDO: Db < B# < C#, and step 2 has no other simple spelling
-    expect(Note.edoNames(22, "sharp").slice(0, 4)).toEqual($("C Db B# C#"));
+    // 22-EDO: B# is above C, so step 2 takes an up or a down instead
+    expect(Note.edoNames(22, "sharp").slice(0, 4)).toEqual($("C Db Db↑ C#"));
+    expect(Note.edoNames(22, "flat").slice(0, 4)).toEqual($("C Db C#↓ C#"));
+  });
+
+  test("spellings don't cross a neighbouring natural", () => {
+    // 41-EDO: B# is a step above C, Ebb a step below D
+    expect(Note.edoNames(41, "sharp").slice(0, 8)).toEqual(
+      $("C C↑ Db↓ Db C# C#↑ D↓ D"),
+    );
+    // 53-EDO: the 5/4 third is E↓ (Fb is below E), the 7/4 seventh Bb↓
+    expect(Note.edoNames(53, "sharp")[17]).toBe("E↓");
+    expect(Note.edoNames(53, "flat")[43]).toBe("Bb↓");
+    // 19-EDO: E# lies between E and F, so it stays
+    expect(Note.edoNames(19, "sharp")[7]).toBe("E#");
   });
 
   test("every name spells its own step", () => {

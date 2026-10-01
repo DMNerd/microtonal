@@ -146,6 +146,7 @@ Note.edoNames(24, "sharp"); // => ["C", "C↑", "C#", "C#↑", "D", …]
 Note.edoNames(24, "flat"); // => ["C", "Db↓", "Db", "D↓", "D", …]
 Note.edoNames(19, "sharp"); // => ["C", "C#", "Db", "D", …, "E", "E#", "F", …]
 Note.edoNames(31, "sharp"); // => ["C", "C↑", "C#", "Db", "Db↑", "D", …]
+Note.edoNames(41, "sharp"); // => ["C", "C↑", "Db↓", "Db", "C#", "C#↑", "D↓", "D", …]
 Note.fromEdoSteps(103, 24, { accidental: "sharp" }); // => "D#↑4"
 ```
 
@@ -153,7 +154,10 @@ Every natural, single and double sharp and flat, with any number of ups or
 downs, is a candidate; the winner has, in order:
 
 1. the fewest ups or downs, counting a double sharp or flat as one more (so
-   31-EDO step 1 is `C↑`, not `B##`)
+   31-EDO step 1 is `C↑`, not `B##`), and a spelling that lands on or past
+   a neighbouring natural as one and a half more (so 41-EDO step 1 is `C↑`,
+   not `B#`, which is above C there, and the 53-EDO 5/4 third is `E↓`, not
+   `Fb`, which is below E). `E#` in 19-EDO lies between E and F, so it stays.
 2. ups in the sharp view, downs in the flat view
 3. the fewest accidentals
 4. no `E#`, `B#`, `Cb` or `Fb` when something else ties (17-EDO step 1 is
@@ -215,9 +219,12 @@ Pcset.isEqual(["C", "E↓"], ["C", "Eb↑"], { edo: 24 }); // => true
   directly. Subset and equality checks compare chromas instead of 32-bit set
   numbers, so they work for any EDO. `setNum` itself is only exact up to
   53-EDO.
-- `intervals` names each step with the simplest spelling: fewest ups/downs,
-  then plain qualities (P, M, m) before augmented/diminished, then ups before
-  downs. In 24-EDO the neutral third is `↑3m`; in 19-EDO step 1 is `1A`.
+- `intervals` names each step with the simplest spelling: fewest ups/downs
+  (an interval that lands on or past a neighbouring major scale degree costs
+  one and a half more, like note names), then plain qualities (P, M, m)
+  before augmented/diminished, then ups before downs. In 24-EDO the neutral
+  third is `↑3m`; in 19-EDO step 1 is `1A`; in 41-EDO step 1 is `↑1P`, not
+  `7A`, and in 53-EDO 4:5:6:7 is `1P ↓3M 5P ↓7m`.
 - `Pcset.chromas()` still lists the 12-EDO chromas only.
 - `normalized` (the smallest rotation starting with a pitch class) is found by
   comparing rotations in place on the chroma written twice, for every EDO.

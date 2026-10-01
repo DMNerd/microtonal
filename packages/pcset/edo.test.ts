@@ -90,6 +90,18 @@ describe("pcset in other EDOs", () => {
     expect(Pcset.intervals(["C", "E↓", "G"], Q24)).toEqual(["1P", "↑3m", "5P"]);
   });
 
+  test("interval names don't cross a neighbouring major scale degree", () => {
+    // 41-EDO: 7A is a step above the octave, 4d a step below 3M
+    expect(edoIntervalNames(41).slice(0, 8)).toEqual(
+      "1P ↑1P ↓2m 2m 1A ↑1A ↓2M 2M".split(" "),
+    );
+    // 53-EDO: 4:5:6:7 is 1P ↓3M 5P ↓7m
+    const names53 = edoIntervalNames(53);
+    expect([0, 17, 31, 43].map((step) => names53[step])).toEqual(
+      "1P ↓3M 5P ↓7m".split(" "),
+    );
+  });
+
   test("notes", () => {
     expect(Pcset.notes(Pcset.get(["C", "E↓", "G"], Q24))).toEqual([
       "C",

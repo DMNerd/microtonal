@@ -2,6 +2,7 @@ import { compact, range, rotate } from "@tonaljs/collection";
 import {
   NotFound,
   edoChroma,
+  edoKey,
   edoOption,
   edoProfile,
   isEdo,
@@ -96,7 +97,9 @@ const isPcset = (set: any): set is Pcset =>
   typeof set.chroma === "string" &&
   isChroma(set.chroma, set.chroma.length);
 
-const cache: { [key in string]: Pcset } = { [EmptyPcset.chroma]: EmptyPcset };
+// Keyed by EDO profile and chroma: a set's interval names depend on how the
+// EDO is spelled (see `edoKey`)
+const cache: { [key in string]: Pcset } = {};
 
 /**
  * A definition of a pitch class set. It could be:
@@ -132,7 +135,8 @@ export function get(src: Set, options?: Partial<PcsetOptions>): Pcset {
           ? src.chroma
           : emptyChroma(edo);
 
-  return (cache[chroma] = cache[chroma] || chromaToPcset(chroma));
+  const key = `${edoKey(chroma.length)}:${chroma}`;
+  return (cache[key] = cache[key] || chromaToPcset(chroma));
 }
 
 /**

@@ -158,7 +158,8 @@ export function edoOption(options: unknown): number | undefined {
 /**
  * Size of the fifth, in steps, of an equal division of the octave (EDO).
  * It uses the closest approximation to a just 3/2 (the "patent" fifth), so
- * 12 => 7, 19 => 11, 24 => 14, 31 => 18
+ * 12 => 7, 19 => 11, 24 => 14, 31 => 18. The fifth notes are spelled with can
+ * differ (see `edoProfile`).
  */
 export function edoFifth(edo: number): number {
   if (!isEdo(edo)) return NaN;
@@ -167,31 +168,109 @@ export function edoFifth(edo: number): number {
 
 /**
  * Size, in steps, of a sharp (the chromatic semitone: seven fifths up, four
- * octaves down) in an EDO. 12 => 1, 19 => 1, 24 => 2, 31 => 2
+ * octaves down) in an EDO, using the fifth of its profile (`edoProfile`).
+ * 12 => 1, 19 => 1, 24 => 2, 31 => 2, 28 => 0, 16 => -1
  */
 export function edoSharp(edo: number): number {
-  return 7 * edoFifth(edo) - 4 * edo;
+  return edoProfile(edo).sharp;
 }
 
 const JUST_FIFTH_CENTS = 1200 * Math.log2(3 / 2);
 
 /**
- * How pitches are sized in an EDO:
- * - fifth: steps of its best fifth (`edoFifth`)
- * - sharp: steps of a sharp (`edoSharp`)
- * - fifthErrorCents: how far that fifth is from a just 3/2
- * - spelling: "fifths" when the EDO's fifths make a usable diatonic scale (a
- *   sharp of at least one step and a fifth within 15 cents), so notes and
- *   intervals are sized by stacking fifths. Otherwise "proportional": the
- *   12-TET size is scaled to the EDO (and ups/downs are still one step).
+ * How EDOs without an override are spelled (see `setEdoSpelling`):
+ * - "fifths" (default): by stacking fifths, as the Xenharmonic Wiki notates
+ *   them. Only EDOs below 5, 6-EDO and 8-EDO (written as subsets of 12- and
+ *   24-EDO) are proportional.
+ * - "proportional-fallback": by fifths only when a sharp is at least one step
+ *   and the fifth is within 15 cents of 3/2; other EDOs are proportional, so
+ *   that, say, a major and a minor triad stay apart in 28-EDO.
+ */
+export type EdoSpelling = "fifths" | "proportional-fallback";
+
+/** Per-EDO choices that win over the global spelling (see `setEdoProfile`) */
+export interface EdoProfileOverride {
+  spelling?: "fifths" | "proportional";
+  /** the fifth to spell by, in steps */
+  fifth?: number;
+}
+
+let globalSpelling: EdoSpelling = "fifths";
+const overrides: Record<number, EdoProfileOverride> = {};
+let profileCache: Record<string, EdoProfile> = {};
+
+/**
+ * Set how EDOs are spelled (see `EdoSpelling`), for every function that
+ * takes an EDO. EDOs with an override (`setEdoProfile`) keep it.
  *
- * Proportional EDOs are the ones where stacked fifths collapse or scramble
- * the scale: 7, 14, 21, 28, 35 (sharp = 0), 9, 11, 16, 23 (sharp < 0) and
- * 5, 6, 8, 10, 13, 15, 18, 20, 25, 30 (fifth off by 18 cents or more).
+ * @example
+ * setEdoSpelling("proportional-fallback")
+ * edoProfile(28).spelling // => "proportional"
+ */
+export function setEdoSpelling(spelling: EdoSpelling): void {
+  if (spelling !== "fifths" && spelling !== "proportional-fallback") return;
+  globalSpelling = spelling;
+  profileCache = {};
+}
+
+/** The current global spelling (see `setEdoSpelling`) */
+export function edoSpelling(): EdoSpelling {
+  return globalSpelling;
+}
+
+/**
+ * Override how one EDO is spelled, whatever the global spelling: by fifths
+ * or proportionally, and with which fifth. Call it without options to remove
+ * the override. A fifth that isn't a whole number of steps between 0 and the
+ * EDO is ignored.
+ *
+ * @example
+ * setEdoProfile(28, { spelling: "proportional" })
+ * setEdoProfile(57, { fifth: 34 }) // 57-EDO by its sharp fifth (34\57)
+ * setEdoProfile(28) // back to the global spelling
+ */
+export function setEdoProfile(edo: number, override?: EdoProfileOverride) {
+  if (!isEdo(edo)) return;
+  const clean: EdoProfileOverride = {};
+  if (override?.spelling === "fifths" || override?.spelling === "proportional")
+    clean.spelling = override.spelling;
+  const fifth = override?.fifth;
+  if (Number.isInteger(fifth) && fifth! > 0 && fifth! < edo)
+    clean.fifth = fifth;
+  if (clean.spelling || clean.fifth) overrides[edo] = clean;
+  else delete overrides[edo];
+  profileCache = {};
+}
+
+/**
+ * A key for caching anything computed for an EDO: it changes when the EDO's
+ * profile can change (global spelling or override).
+ */
+export function edoKey(edo: number): string {
+  const o = overrides[edo];
+  return o
+    ? `${edo}/${o.spelling ?? globalSpelling}/${o.fifth ?? ""}`
+    : `${edo}/${globalSpelling}`;
+}
+
+/**
+ * How pitches are sized in an EDO:
+ * - fifth: steps of the fifth notes are spelled by: the best fifth
+ *   (`edoFifth`), except where it makes the minor second descend (13- and
+ *   18-EDO), which use the next narrower one, as the Xenharmonic Wiki does
+ * - sharp: steps of a sharp (`edoSharp`): seven of those fifths less four
+ *   octaves. It can be 0 (7, 14, 21, 28, 35-EDO: sharps don't move the pitch)
+ *   or negative (9, 11, 16, 23-EDO: a sharp lowers it)
+ * - fifthErrorCents: how far that fifth is from a just 3/2
+ * - spelling: "fifths" when notes and intervals are sized by stacking that
+ *   fifth, "proportional" when the 12-TET size is scaled to the EDO (ups and
+ *   downs are still one step). Which EDOs are proportional depends on the
+ *   global spelling (`setEdoSpelling`) and overrides (`setEdoProfile`).
  *
  * @example
  * edoProfile(22) // => { edo: 22, fifth: 13, sharp: 3, fifthErrorCents: 7.1, spelling: "fifths" }
- * edoProfile(28).spelling // => "proportional"
+ * edoProfile(13).fifth // => 7 (the best fifth, 8, makes the minor 2nd descend)
+ * edoProfile(6).spelling // => "proportional"
  */
 export interface EdoProfile {
   edo: number;
@@ -202,7 +281,8 @@ export interface EdoProfile {
 }
 
 const MAX_FIFTH_ERROR_CENTS = 15;
-const profileCache: Record<number, EdoProfile> = {};
+// Written as subsets of 12- and 24-EDO on the Xenharmonic Wiki
+const SUBSET_EDOS = [6, 8];
 
 export function edoProfile(edo: number): EdoProfile {
   if (!isEdo(edo)) {
@@ -214,16 +294,32 @@ export function edoProfile(edo: number): EdoProfile {
       spelling: "proportional",
     };
   }
-  if (profileCache[edo]) return profileCache[edo];
-  const fifth = edoFifth(edo);
-  const sharp = edoSharp(edo);
+  const key = edoKey(edo);
+  if (profileCache[key]) return profileCache[key];
+  const override = overrides[edo] ?? {};
+  const best = edoFifth(edo);
+  let fifth = override.fifth ?? best;
+  // a minor second (3 octaves less 5 fifths) must not descend; the
+  // proportional fallback keeps the best fifth, as before it existed
+  if (
+    override.fifth === undefined &&
+    globalSpelling === "fifths" &&
+    3 * edo - 5 * best < 0
+  )
+    fifth = best - 1;
+  const sharp = 7 * fifth - 4 * edo;
   const fifthErrorCents =
     Math.round(((fifth * 1200) / edo - JUST_FIFTH_CENTS) * 10) / 10;
   const spelling =
-    sharp >= 1 && Math.abs(fifthErrorCents) <= MAX_FIFTH_ERROR_CENTS
-      ? "fifths"
-      : "proportional";
-  return (profileCache[edo] = { edo, fifth, sharp, fifthErrorCents, spelling });
+    override.spelling ??
+    (globalSpelling === "fifths"
+      ? edo < 5 || SUBSET_EDOS.includes(edo)
+        ? "proportional"
+        : "fifths"
+      : sharp >= 1 && Math.abs(fifthErrorCents) <= MAX_FIFTH_ERROR_CENTS
+        ? "fifths"
+        : "proportional");
+  return (profileCache[key] = { edo, fifth, sharp, fifthErrorCents, spelling });
 }
 
 // Round half away from zero, so descending sizes mirror ascending ones
@@ -249,7 +345,7 @@ export function edoSteps(pitch: Pitch, edo = 12): number {
     const semitones = pitch.oct === undefined ? mod(f * 7, 12) : f * 7 + o * 12;
     steps = roundSymmetric((semitones * edo) / 12) + ups;
   } else {
-    steps = f * edoFifth(edo) + o * edo + ups;
+    steps = f * edoProfile(edo).fifth + o * edo + ups;
   }
   // pitch classes have no octave: reduce to 0..edo-1 above C
   return pitch.oct === undefined ? mod(steps, edo) : steps;

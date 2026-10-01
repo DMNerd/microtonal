@@ -6,7 +6,7 @@ import {
   PcsetNum,
   projectTypesToEdo,
 } from "@tonaljs/pcset";
-import { isEdo } from "@tonaljs/pitch";
+import { edoKey, isEdo } from "@tonaljs/pitch";
 import { interval } from "@tonaljs/pitch-interval";
 import data from "./data";
 import microtonalData from "./microtonal-data";
@@ -34,7 +34,7 @@ let dictionary: ChordType[] = [];
 // traditional chords ("↓3M" is "3m" in 12-EDO). See `forEdo`.
 let microtonal: ChordType[] = [];
 let index: Record<ChordTypeName, ChordType> = Object.create(null);
-let edoCache: Record<number, ChordType[]> = {};
+let edoCache: Record<string, ChordType[]> = {};
 // How established each chord type is, by interval spelling. See `tier`.
 let tiers: Record<string, number> = Object.create(null);
 
@@ -107,10 +107,11 @@ export function allMicrotonal(): ChordType[] {
  */
 export function forEdo(edo: number): ChordType[] {
   if (!isEdo(edo)) return [];
-  if (!edoCache[edo]) {
-    edoCache[edo] = projectTypesToEdo(dictionary, microtonal, edo);
+  const key = edoKey(edo);
+  if (!edoCache[key]) {
+    edoCache[key] = projectTypesToEdo(dictionary, microtonal, edo);
   }
-  return edoCache[edo].slice();
+  return edoCache[key].slice();
 }
 
 /**

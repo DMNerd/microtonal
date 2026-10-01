@@ -6,7 +6,7 @@ import {
   PcsetNum,
   projectTypesToEdo,
 } from "@tonaljs/pcset";
-import { isEdo } from "@tonaljs/pitch";
+import { edoKey, isEdo } from "@tonaljs/pitch";
 import { interval } from "@tonaljs/pitch-interval";
 import data from "./data";
 import microtonalData from "./microtonal-data";
@@ -36,7 +36,7 @@ let dictionary: ScaleType[] = [];
 // traditional scales. See `forEdo`.
 let microtonal: ScaleType[] = [];
 let index: Record<ScaleTypeName, ScaleType> = Object.create(null);
-let edoCache: Record<number, ScaleType[]> = {};
+let edoCache: Record<string, ScaleType[]> = {};
 
 export function names() {
   return dictionary.map((scale) => scale.name);
@@ -111,10 +111,11 @@ export function allMicrotonal(): ScaleType[] {
  */
 export function forEdo(edo: number): ScaleType[] {
   if (!isEdo(edo)) return [];
-  if (!edoCache[edo]) {
-    edoCache[edo] = projectTypesToEdo(dictionary, microtonal, edo);
+  const key = edoKey(edo);
+  if (!edoCache[key]) {
+    edoCache[key] = projectTypesToEdo(dictionary, microtonal, edo);
   }
-  return edoCache[edo].slice();
+  return edoCache[key].slice();
 }
 
 /**

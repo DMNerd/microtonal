@@ -108,6 +108,21 @@ describe("pcset in other EDOs", () => {
     expect(edoIntervalNames(41)[40]).toBe("↓8P");
   });
 
+  test("interval names where a sharp lowers the pitch or does nothing", () => {
+    // 16-EDO: no ups or downs, and major is narrower than minor
+    expect(edoIntervalNames(16).slice(0, 7)).toEqual(
+      "1P 2A 2M 2m 3M 3m 3d".split(" "),
+    );
+    // 13-EDO: spelled by its narrower fifth (7 steps)
+    expect(edoIntervalNames(13).slice(0, 7)).toEqual(
+      "1P 2M 3M ↑3M ↓3m 3m 4P".split(" "),
+    );
+    // 28-EDO: a sharp is 0 steps, so only ups and downs move a pitch
+    expect(edoIntervalNames(28).slice(0, 5)).toEqual(
+      "1P ↑1P ↑↑1P ↓2m 2m".split(" "),
+    );
+  });
+
   test("interval names don't cross a neighbouring major scale degree", () => {
     // 41-EDO: 7A is a step above the octave, and plain qualities with ups
     // read better than 1A (as the Xenharmonic Wiki writes them)

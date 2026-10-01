@@ -4,6 +4,7 @@ import {
   Pitch,
   edoChroma as pitchEdoChroma,
   edoCrossesNatural,
+  edoKey,
   edoOption,
   isEdo,
   edoSteps as pitchEdoSteps,
@@ -184,7 +185,7 @@ const CROSSING_COST = 1.5;
  */
 export function edoNames(edo: number, accidental: EdoAccidental): string[] {
   if (!isEdo(edo)) return [];
-  const key = `${edo}/${accidental}`;
+  const key = `${edoKey(edo)}/${accidental}`;
   if (spellingCache[key]) return spellingCache[key].slice();
 
   const preferUps = accidental === "sharp";

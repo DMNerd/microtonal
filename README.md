@@ -49,10 +49,9 @@ one step). Where the fork writes things differently, it is on purpose:
 - **No mid symbol**: Kite writes an interval exactly between major and minor
   as mid (`~3`). The fork names it with an up or a down (`↑3m`, the same step
   as `↓3M`), so every interval stays a Tonal quality plus arrows.
-- **Proportional EDOs**: EDOs whose fifths don't make a usable diatonic scale
-  are sized by scaling 12-TET (see
-  [EDO profiles](#notes-and-intervals)); Kite notates them by fifths (13 and
-  18-EDO with their second-best fifth).
+- **No quality-less intervals**: where a sharp is 0 steps (7, 14, 21, 28,
+  35-EDO) major and minor are the same size and Kite omits the quality
+  (`^3`). The fork keeps one (`↑3m`), as every Tonal interval has one.
 
 ## Status
 
@@ -72,6 +71,36 @@ Developed on the `main` branch. Last synced with upstream Tonal `main` at
    (`Note.edoNames`), EDO profiles (fifths vs proportional sizing), respelling
    in any EDO (`simplify`/`enharmonic` with `{ edo }`), EDO ranges
    (`Range.chromatic` with `{ edo }`), four more maqamat.
+5. **Steps and spelling** — _done_: `Interval.fromEdoSteps`,
+   `Note.transposeEdoSteps`, one rule for invalid EDOs (`isEdo`,
+   `edoOption`), spellings that don't cross a neighbouring natural, interval
+   names with plain qualities and arrows as in Kite's notation, 7-limit
+   chords (harmonic and downminor seventh), every EDO spelled by fifths as on
+   the Xenharmonic Wiki, with a global proportional fallback
+   (`setEdoSpelling`) and per-EDO overrides (`setEdoProfile`).
+
+Planned, roughly in order: scales of other EDOs (beyond the maqamat), names
+for more microtonal chords, microtonal MIDI (pitch bend), and publishing under
+the fork's own package names.
+
+### Syncing with upstream
+
+Upstream fixes are merged, not rebased, so the history of both stays intact:
+
+```sh
+git remote add upstream https://github.com/tonaljs/tonal.git  # once
+git fetch upstream
+git merge upstream/main
+npm run lint && npm run build && npx vitest run
+```
+
+Conflicts usually come from code both sides changed: the chord and scale
+dictionaries (`chord-type`, `scale-type`: keep the microtonal list and EDO
+caches), `Pcset` normalization (keep the in-place scan that works in any EDO),
+and the browser bundle (rebuild it). Upstream tests that count dictionary
+entries or snapshot exports may need their numbers updated; any change in
+behaviour goes in [Deliberate differences](#deliberate-differences-from-upstream).
+Then update the last sync commit above.
 
 ### Implemented so far
 
@@ -110,30 +139,47 @@ The low-level versions live in `@tonaljs/pitch`: `edoSteps(pitch, edo)`,
 `edoChroma(pitch, edo)`, `edoFifth(edo)` (the EDO's best fifth) and
 `edoSharp(edo)` (size of a sharp: 1 in 12/19-EDO, 2 in 24/31-EDO).
 
-**EDO profiles: fifths or proportional.** Stacking fifths only makes sense
-when the EDO's fifth is close to 3/2 and a sharp is at least one step. In
-28-EDO, say, fifths make the major third, the minor third and the diminished
-fifth all 8 steps. `edoProfile(edo)` (in `@tonaljs/pitch`) classifies every
-EDO:
+**EDO profiles: fifths or proportional.** Like the Xenharmonic Wiki, the
+fork spells every EDO by stacking fifths. `edoProfile(edo)` (in
+`@tonaljs/pitch`) gives the fifth, the size of a sharp and how far the fifth
+is from 3/2:
 
 ```js
 edoProfile(22);
 // => { edo: 22, fifth: 13, sharp: 3, fifthErrorCents: 7.1, spelling: "fifths" }
-edoProfile(28).spelling; // => "proportional"
+edoProfile(13).fifth; // => 7  (its best fifth, 8, makes the minor 2nd descend)
+edoSharp(28); // => 0   (sharps don't move the pitch: only ups and downs do)
+edoSharp(16); // => -1  (a sharp lowers the pitch, major is narrower than minor)
 ```
 
-An EDO is spelled by `"fifths"` when its sharp is at least one step and its
-fifth is within 15 cents of a just fifth. The others are `"proportional"`:
-7, 14, 21, 28, 35 (sharp of 0), 9, 11, 16, 23 (negative sharp) and 5, 6, 8,
-10, 13, 15, 18, 20, 25, 30 (fifth 18 cents or more out). In a proportional
-EDO, `edoSteps`/`edoChroma` (and everything built on them: pitch-class sets,
-`forEdo`, chord and scale detection) scale the 12-TET size to the EDO,
-rounded, and ups and downs stay one step each:
+- The fifth is the EDO's best one, except where that makes the minor second
+  descend (13- and 18-EDO), which use the next narrower fifth.
+- A sharp of 0 (7, 14, 21, 28, 35-EDO) makes major and minor the same size;
+  a negative sharp (9, 11, 16, 23-EDO) makes major narrower than minor.
+  Interval arithmetic still works, as the wiki's "harmonic notation".
+- EDOs below 5, 6-EDO and 8-EDO are `"proportional"` (the wiki writes 6 and 8
+  as subsets of 12- and 24-EDO): `edoSteps`/`edoChroma` (and everything built
+  on them: pitch-class sets, `forEdo`, chord and scale detection) scale the
+  12-TET size to the EDO, rounded, and ups and downs stay one step each.
+
+Apps that want a major and a minor triad to stay apart in every EDO can
+switch to the **proportional fallback**, which spells an EDO by fifths only
+when a sharp is at least one step and the fifth is within 15 cents of 3/2,
+and sizes the others proportionally (5–11, 13–16, 18, 20, 21, 23, 25, 28, 30
+and 35-EDO). Single EDOs can be overridden either way, or given another
+fifth, e.g. for EDOs with two usable fifths:
 
 ```js
-Interval.edoSteps("3M", 22); // => 8  (fifths)
+setEdoSpelling("proportional-fallback"); // every EDO without an override
 Interval.edoSteps("3M", 28); // => 9  (proportional: 4 × 28/12 = 9.33)
+setEdoProfile(28, { spelling: "fifths" }); // just 28-EDO by fifths again
+setEdoProfile(57, { fifth: 34 }); // 57-EDO by its sharp fifth (34\57)
+setEdoProfile(57); // remove the override
 ```
+
+Every per-EDO result (names, sets, chord and scale types) is cached by
+`edoKey(edo)`, which changes with the settings, so they can change at any
+time.
 
 Microtonal chords and scales are only offered in EDOs spelled by fifths with
 a sharp of at least two steps.

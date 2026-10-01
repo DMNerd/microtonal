@@ -1,6 +1,6 @@
 import { all, ChordType, forEdo, tier } from "@tonaljs/chord-type";
 import { get as pcset, modes } from "@tonaljs/pcset";
-import { edoChroma, edoOption, isEdo } from "@tonaljs/pitch";
+import { edoChroma, edoKey, edoOption, isEdo } from "@tonaljs/pitch";
 import { interval } from "@tonaljs/pitch-interval";
 import { note } from "@tonaljs/pitch-note";
 
@@ -74,10 +74,11 @@ interface FifthRules {
   sevenths: number[];
 }
 
-const rulesCache: Record<number, FifthRules> = {};
+const rulesCache: Record<string, FifthRules> = {};
 
 function fifthRules(edo: number): FifthRules {
-  if (rulesCache[edo]) return rulesCache[edo];
+  const key = edoKey(edo);
+  if (rulesCache[key]) return rulesCache[key];
   const at = (name: string) => edoChroma(interval(name), edo);
   const between = (from: number, to: number) => {
     const steps = [];
@@ -85,7 +86,7 @@ function fifthRules(edo: number): FifthRules {
     return steps;
   };
   const fifth = at("5P");
-  return (rulesCache[edo] = {
+  return (rulesCache[key] = {
     fifth,
     thirds: between(at("2M"), at("4P")),
     // anything from just above the fourth up to the minor sixth

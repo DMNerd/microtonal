@@ -4,10 +4,16 @@ import {
   Pitch,
   edoChroma as pitchEdoChroma,
   edoCrossesNatural,
+  edoOption,
+  isEdo,
   edoSteps as pitchEdoSteps,
 } from "@tonaljs/pitch";
 import { distance as _dist, transpose as _tr } from "@tonaljs/pitch-distance";
-import { IntervalName, edoIntervalNames } from "@tonaljs/pitch-interval";
+import {
+  IntervalName,
+  edoIntervalNames,
+  intervalFromEdoSteps,
+} from "@tonaljs/pitch-interval";
 import {
   Note,
   NoteLiteral,
@@ -134,7 +140,13 @@ export function edoFreq(
   const n = get(noteName);
   const ref = get(options.refNote ?? "A4");
   const refFreq = options.refFreq ?? 440;
-  if (n.empty || n.oct === undefined || ref.empty || ref.oct === undefined) {
+  if (
+    !isEdo(edo) ||
+    n.empty ||
+    n.oct === undefined ||
+    ref.empty ||
+    ref.oct === undefined
+  ) {
     return null;
   }
   const steps = pitchEdoSteps(n, edo) - pitchEdoSteps(ref, edo);
@@ -171,7 +183,7 @@ const CROSSING_COST = 1.5;
  * Note.edoNames(19, "sharp").slice(0, 3) // => ["C", "C#", "Db"]
  */
 export function edoNames(edo: number, accidental: EdoAccidental): string[] {
-  if (!Number.isInteger(edo) || edo < 1) return [];
+  if (!isEdo(edo)) return [];
   const key = `${edo}/${accidental}`;
   if (spellingCache[key]) return spellingCache[key].slice();
 
@@ -237,7 +249,7 @@ export function fromEdoSteps(
   edo = 12,
   options: { pitchClass?: boolean; accidental?: EdoAccidental } = {},
 ): NoteName {
-  if (!Number.isInteger(steps) || !Number.isInteger(edo) || edo < 1) {
+  if (!Number.isInteger(steps) || !isEdo(edo)) {
     return "";
   }
   const chroma = ((steps % edo) + edo) % edo;
@@ -248,6 +260,38 @@ export function fromEdoSteps(
   const n0 = props(pc + "0");
   const oct = (steps - pitchEdoSteps(n0, edo)) / edo;
   return props({ ...n0, oct }).name;
+}
+
+/**
+ * Transpose a note by a number of steps of an equal division of the octave.
+ * The steps are spelled as an interval (see `Interval.fromEdoSteps`), so the
+ * note keeps its letter where it can. In "proportional" EDOs, where that
+ * spelling can land on another step, the target step is respelled like
+ * `edoNames` instead. Pitch classes stay pitch classes.
+ *
+ * @example
+ * Note.transposeEdoSteps("C4", 7, 24) // => "Eb↑4"
+ * Note.transposeEdoSteps("C#", 1, 24) // => "C#↑"
+ * Note.transposeEdoSteps("E4", -1, 24) // => "E↓4"
+ */
+export function transposeEdoSteps(
+  note: NoteLiteral,
+  steps: number,
+  edo = 12,
+): NoteName {
+  const n = get(note);
+  if (n.empty || !Number.isInteger(steps) || !isEdo(edo)) return "";
+  const pitchClass = n.oct === undefined;
+  const target = pitchEdoSteps(n, edo) + steps;
+  const result = get(_tr(n.name, intervalFromEdoSteps(steps, edo)));
+  const expected = pitchClass ? ((target % edo) + edo) % edo : target;
+  if (!result.empty && pitchEdoSteps(result, edo) === expected) {
+    return result.name;
+  }
+  return fromEdoSteps(target, edo, {
+    pitchClass,
+    accidental: steps < 0 ? "flat" : "sharp",
+  });
 }
 
 // Apply a 12-TET respelling to the note without its ups/downs, then put them back
@@ -399,18 +443,6 @@ export interface EdoRespellOptions {
   edo: number;
 }
 
-// Only a real options object counts: `simplify` is often a `map` callback,
-// which passes the array index as the second argument
-const edoOption = (options: unknown): number | undefined => {
-  const edo =
-    options && typeof options === "object"
-      ? (options as Partial<EdoRespellOptions>).edo
-      : undefined;
-  return typeof edo === "number" && Number.isInteger(edo) && edo > 0
-    ? edo
-    : undefined;
-};
-
 // Flats and downs lean one way, sharps and ups the other
 const leansFlat = (note: Note) =>
   note.alt < 0 || (note.alt === 0 && note.ups < 0);
@@ -434,7 +466,11 @@ export const simplify = (
   // In an EDO: the simplest spelling of the same step, keeping the
   // accidental direction (simplify("C##", { edo: 19 }) => "Db")
   const edo = edoOption(options);
-  if (edo) return spellInEdo(note, edo, leansFlat(note) ? "flat" : "sharp");
+  if (edo !== undefined) {
+    return isEdo(edo)
+      ? spellInEdo(note, edo, leansFlat(note) ? "flat" : "sharp")
+      : "";
+  }
   // Ups and downs are kept: simplify("C##↑") => "D↑"
   return keepUps(note, (base) =>
     midiToNoteName(base.midi || base.chroma, {
@@ -470,7 +506,9 @@ export function enharmonic(
     return "";
   }
   const edo = edoOption(options);
-  if (edo) return enharmonicInEdo(src, destName, edo);
+  if (edo !== undefined) {
+    return isEdo(edo) ? enharmonicInEdo(src, destName, edo) : "";
+  }
   // Without a destination, ups and downs are kept: enharmonic("Db↓") => "C#↓"
   if (src.ups && !destName) {
     return keepUps(src, (base) => enharmonic(base.name));
@@ -551,6 +589,7 @@ export default {
   edoFreq,
   edoNames,
   fromEdoSteps,
+  transposeEdoSteps,
   transpose,
   tr,
   transposeBy,

@@ -7,6 +7,7 @@ import { distance as dist } from "@tonaljs/pitch-distance";
 import {
   IntervalName,
   coordToInterval,
+  intervalFromEdoSteps,
   interval as props,
 } from "@tonaljs/pitch-interval";
 
@@ -208,6 +209,18 @@ export function edoSteps(interval: IntervalName, edo = 12): number {
   return ivl.empty ? NaN : pitchEdoSteps(ivl, edo);
 }
 
+/**
+ * Get an interval name from its (signed) size in steps of an equal division
+ * of the octave, spelled with the fewest ups and downs (like `Pcset.intervals`)
+ * plus whole octaves. Returns "" for a fractional size or an invalid edo.
+ *
+ * @example
+ * Interval.fromEdoSteps(7, 24) // => "↑3m" (neutral third)
+ * Interval.fromEdoSteps(31, 24) // => "↑10m"
+ * Interval.fromEdoSteps(-11, 19) // => "-5P"
+ */
+export const fromEdoSteps = intervalFromEdoSteps;
+
 /** @deprecated */
 export default {
   names,
@@ -225,6 +238,7 @@ export default {
   subtract,
   transposeFifths,
   edoSteps,
+  fromEdoSteps,
 };
 
 //// PRIVATE ////

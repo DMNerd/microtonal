@@ -1,6 +1,7 @@
 import { compact, range } from "@tonaljs/collection";
 import { midiToNoteName, toMidi, ToNoteNameOptions } from "@tonaljs/midi";
 import { edoSteps, fromEdoSteps } from "@tonaljs/note";
+import { edoOption, isEdo } from "@tonaljs/pitch";
 
 /**
  * Create a numeric range. You supply a list of notes or numbers and it will
@@ -74,8 +75,9 @@ export function chromatic(
   notes: (string | number)[],
   options?: Partial<ChromaticOptions>,
 ): string[] {
-  const edo = options?.edo;
-  if (typeof edo === "number" && Number.isInteger(edo) && edo > 0) {
+  const edo = edoOption(options);
+  if (edo !== undefined) {
+    if (!isEdo(edo)) return [];
     const accidental = options?.sharps ? "sharp" : "flat";
     return fillRanges(notes, (note) =>
       typeof note === "number" ? note : edoSteps(note, edo),

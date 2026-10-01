@@ -136,6 +136,32 @@ Steps are spelled with the simplest name above C (fewest ups and downs), the
 same rule as `Pcset.intervals`; `edoIntervalNames(edo)` in
 `@tonaljs/pitch-interval` gives the whole list.
 
+`Interval.fromEdoSteps` does the same for a signed interval size (whole
+octaves included), and `Note.transposeEdoSteps` moves a note by a number of
+steps, keeping its letter where it can:
+
+```js
+Interval.fromEdoSteps(7, 24); // => "↑3m"
+Interval.fromEdoSteps(31, 24); // => "↑10m"
+Interval.fromEdoSteps(-11, 19); // => "-5P"
+Interval.fromEdoSteps(40, 41); // => "↓8P"  (an octave less one step)
+Note.transposeEdoSteps("C#", 1, 24); // => "C#↑"
+Note.transposeEdoSteps("E4", -1, 24); // => "E↓4"
+```
+
+In "proportional" EDOs, where a spelled interval can land on another step,
+`transposeEdoSteps` respells the target step like `Note.edoNames` instead.
+Interval names never wrap past the octave (no `7A` for a small step), so
+`fromEdoSteps` always gives back the exact size: tested in EDOs 5 to 72.
+
+**Invalid EDOs.** An EDO is a positive whole number (`isEdo` in
+`@tonaljs/pitch`). Every function given anything else returns its empty
+result: `NaN` for sizes, `[]` for lists, `""` for names, `null` for
+frequencies and an empty set for `Pcset.get`. An `{ edo }` option that is
+left out still means 12-EDO; an invalid one no longer falls back to 12
+(`Chord.detect(notes, { edo: 0 })` => `[]`). `edoOption(options)` reads
+the option the same way for your own functions.
+
 **Sharp and flat views.** `Note.edoNames(edo, "sharp" | "flat")` spells every
 pitch class of an EDO the way a sharp-leaning or flat-leaning note picker
 would, and `Note.fromEdoSteps(steps, edo, { accidental })` uses the same

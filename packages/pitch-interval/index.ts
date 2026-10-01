@@ -3,6 +3,8 @@ import {
   Direction,
   edoChroma,
   edoCrossesNatural,
+  edoSteps,
+  isEdo,
   IntervalCoordinates,
   isNamedPitch,
   isPitch,
@@ -297,16 +299,21 @@ const CROSSING_COST = 1.5;
  * edoIntervalNames(24)[7] // => "↑3m"
  */
 export function edoIntervalNames(edo: number): IntervalName[] {
+  if (!isEdo(edo)) return [];
   if (edoNamesCache[edo]) return edoNamesCache[edo];
   const best: { name: IntervalName; cost: number[] }[] = [];
   EDO_CANDIDATES.forEach((candidate, order) => {
     const ivl = interval(candidate);
     const size = edoChroma(ivl, edo);
+    const fullSize = edoSteps(ivl, edo);
     const plain = /^[PMm]$/.test(ivl.q) ? 0 : 1;
     for (let step = 0; step < edo; step++) {
       // ups needed to reach `step` from this interval, the short way round
       const diff = (((step - size) % edo) + edo) % edo;
       const ups = diff > edo / 2 ? diff - edo : diff;
+      // a name that only fits an octave down ("7A" for a small step) has no
+      // spelling as an interval
+      if (fullSize + ups >= edo) continue;
       const crosses = edoCrossesNatural({ ...ivl, ups }, edo);
       const cost = [
         Math.abs(ups) + (crosses ? CROSSING_COST : 0),
@@ -322,6 +329,29 @@ export function edoIntervalNames(edo: number): IntervalName[] {
     }
   });
   return (edoNamesCache[edo] = best.map((b) => b.name));
+}
+
+/**
+ * Get an interval from its (signed) size in steps of an EDO: the simplest
+ * spelling of that step (see `edoIntervalNames`) plus whole octaves.
+ * Negative sizes give descending intervals. Returns "" for a fractional size
+ * or an invalid edo.
+ *
+ * @example
+ * intervalFromEdoSteps(7, 24) // => "↑3m"
+ * intervalFromEdoSteps(31, 24) // => "↑10m"
+ * intervalFromEdoSteps(-7, 24) // => "-↑3m"
+ * intervalFromEdoSteps(40, 41) // => "↓8P" (an octave less one step)
+ */
+export function intervalFromEdoSteps(steps: number, edo = 12): IntervalName {
+  if (!Number.isInteger(steps) || !isEdo(edo)) return "";
+  const size = Math.abs(steps);
+  const base = interval(edoIntervalNames(edo)[size % edo]);
+  // the simplest name can be off by octaves: "↓1P" is one step below 1P
+  const octaves = (size - edoSteps(base, edo)) / edo;
+  const arrows = base.ups < 0 ? "↓".repeat(-base.ups) : "↑".repeat(base.ups);
+  const name = arrows + (base.num + 7 * octaves) + base.q;
+  return steps < 0 ? "-" + name : name;
 }
 
 function compareCosts(a: number[], b: number[]): number {

@@ -6,6 +6,7 @@ import {
   PcsetNum,
   projectTypesToEdo,
 } from "@tonaljs/pcset";
+import { isEdo } from "@tonaljs/pitch";
 import { interval } from "@tonaljs/pitch-interval";
 import data from "./data";
 import microtonalData from "./microtonal-data";
@@ -109,6 +110,7 @@ export function allMicrotonal(): ScaleType[] {
  * // => "100010010010001000100100"
  */
 export function forEdo(edo: number): ScaleType[] {
+  if (!isEdo(edo)) return [];
   if (!edoCache[edo]) {
     edoCache[edo] = projectTypesToEdo(dictionary, microtonal, edo);
   }

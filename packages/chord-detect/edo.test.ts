@@ -58,9 +58,10 @@ describe("detect in other EDOs", () => {
     expect(detect(["C", "E", "B"], Q24)).not.toContain("Cmaj7");
   });
 
-  test("invalid edo falls back to 12", () => {
-    expect(detect(["C", "E", "G"], { edo: 0 })).toEqual(
-      detect(["C", "E", "G"]),
-    );
+  test("an invalid edo detects nothing", () => {
+    for (const edo of [0, -5, 2.5, NaN, Infinity]) {
+      expect(detect(["C", "E", "G"], { edo })).toEqual([]);
+    }
+    expect(detect(["C", "E", "G"], {})).toEqual(detect(["C", "E", "G"]));
   });
 });

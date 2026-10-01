@@ -17,7 +17,7 @@ import {
   modes,
   get as pcset,
 } from "@tonaljs/pcset";
-import { edoChroma, edoSteps } from "@tonaljs/pitch";
+import { edoChroma, edoOption, edoSteps, isEdo } from "@tonaljs/pitch";
 import { tonicIntervalsTransposer, transpose } from "@tonaljs/pitch-distance";
 import { note, NoteName } from "@tonaljs/pitch-note";
 import {
@@ -37,10 +37,9 @@ export interface EdoOptions {
   edo: number;
 }
 
-const edoOf = (options?: Partial<EdoOptions>): number => {
-  const edo = options?.edo;
-  return typeof edo === "number" && Number.isInteger(edo) && edo > 0 ? edo : 12;
-};
+// 12 when no edo is given, NaN when it is not an EDO (see `edoOption`)
+const edoOf = (options?: Partial<EdoOptions>): number =>
+  edoOption(options) ?? 12;
 const scaleTypesIn = (edo: number) =>
   edo === 12 ? scaleTypes() : scaleTypesForEdo(edo);
 const chordTypesIn = (edo: number) =>
@@ -141,6 +140,7 @@ export function detect(
   options: { tonic?: string; match?: "exact" | "fit"; edo?: number } = {},
 ): string[] {
   const edo = edoOf(options);
+  if (!isEdo(edo)) return [];
   const notesChroma = chroma(notes, { edo });
   const tonic = note(options.tonic ?? notes[0] ?? "");
   const tonicChroma = edo === 12 ? tonic.chroma : edoChroma(tonic, edo);
@@ -184,6 +184,7 @@ export function scaleChords(
   options?: Partial<EdoOptions>,
 ): string[] {
   const edo = edoOf(options);
+  if (!isEdo(edo)) return [];
   const inScale = isSubsetOf(pcset(scaleChroma(name, edo), { edo }));
   return chordTypesIn(edo)
     .filter((chord) => inScale(chord))
@@ -204,6 +205,7 @@ export function extended(
   options?: Partial<EdoOptions>,
 ): string[] {
   const edo = edoOf(options);
+  if (!isEdo(edo)) return [];
   const chroma = isChroma(name, edo) ? name : scaleChroma(name, edo);
   const isSuperset = isSupersetOf(pcset(chroma, { edo }));
   return scaleTypesIn(edo)
@@ -224,6 +226,7 @@ export function extended(
  */
 export function reduced(name: string, options?: Partial<EdoOptions>): string[] {
   const edo = edoOf(options);
+  if (!isEdo(edo)) return [];
   const isSubset = isSubsetOf(pcset(scaleChroma(name, edo), { edo }));
   return scaleTypesIn(edo)
     .filter((scale) => isSubset(scale))
@@ -272,6 +275,7 @@ export function modeNames(
     return [];
   }
   const edo = edoOf(options);
+  if (!isEdo(edo)) return [];
   const nameOf =
     edo === 12
       ? (chroma: string) => get(chroma).name
@@ -336,6 +340,7 @@ export function rangeOf(
   options?: Partial<EdoOptions>,
 ) {
   const edo = edoOf(options);
+  if (!isEdo(edo)) return () => [];
   if (edo !== 12) {
     const getName = getEdoNoteNameOf(scale, edo);
     return (fromNote: string, toNote: string) => {

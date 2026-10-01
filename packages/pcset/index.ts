@@ -1,5 +1,11 @@
 import { compact, range, rotate } from "@tonaljs/collection";
-import { NotFound, edoChroma, edoProfile } from "@tonaljs/pitch";
+import {
+  NotFound,
+  edoChroma,
+  edoOption,
+  edoProfile,
+  isEdo,
+} from "@tonaljs/pitch";
 import { transpose } from "@tonaljs/pitch-distance";
 import {
   Interval,
@@ -68,13 +74,8 @@ const chromaToNumber = (chroma: string): number => parseInt(chroma, 2);
 const REGEX = /^[01]+$/;
 const emptyChroma = (edo: number) => "0".repeat(edo);
 
-// Options may come from untrusted places, like the index when `get` is used
-// as a `map` callback: only a positive integer edo is accepted
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const edoOf = (options: any): number => {
-  const edo = options && typeof options === "object" ? options.edo : undefined;
-  return Number.isInteger(edo) && edo > 0 ? edo : 12;
-};
+// 12 when no edo is given, NaN when it is not an EDO (see `edoOption`)
+const edoOf = (options: unknown): number => edoOption(options) ?? 12;
 
 /**
  * Test if a value is a chroma: a string of "0" and "1" of length `edo`
@@ -120,6 +121,7 @@ export type Set =
  */
 export function get(src: Set, options?: Partial<PcsetOptions>): Pcset {
   const edo = edoOf(options);
+  if (!isEdo(edo)) return EmptyPcset;
   const chroma: PcsetChroma = isChroma(src, edo)
     ? src
     : isPcsetNum(src, edo)

@@ -106,3 +106,30 @@ describe("fromEdoSteps with an accidental preference", () => {
     expect(Note.fromEdoSteps(103, 24)).toBe("Eb↑4");
   });
 });
+
+describe("transposeEdoSteps", () => {
+  test("keeps the letter where it can", () => {
+    expect(Note.transposeEdoSteps("C4", 7, 24)).toBe("Eb↑4");
+    expect(Note.transposeEdoSteps("C#", 1, 24)).toBe("C#↑");
+    expect(Note.transposeEdoSteps("E4", -1, 24)).toBe("E↓4");
+    expect(Note.transposeEdoSteps("Bb3", 3, 19)).toBe("C4");
+    expect(Note.transposeEdoSteps("X", 1, 24)).toBe("");
+  });
+
+  test("lands on the right step in every EDO", () => {
+    for (let edo = 5; edo <= 72; edo++) {
+      for (const note of ["C4", "F#4", "Bb↓3", "E", "Db↑"]) {
+        const base = Note.edoSteps(note, edo);
+        for (let steps = -edo; steps <= edo; steps++) {
+          const target = note.match(/\d/)
+            ? base + steps
+            : (((base + steps) % edo) + edo) % edo;
+          const result = Note.transposeEdoSteps(note, steps, edo);
+          expect(Note.edoSteps(result, edo), `${edo} ${note} ${steps}`).toBe(
+            target,
+          );
+        }
+      }
+    }
+  });
+});

@@ -124,11 +124,44 @@ function unaltered(f: number): number {
 const mod = (n: number, m: number) => ((n % m) + m) % m;
 
 /**
+ * Whether a value is a usable equal division of the octave: a positive whole
+ * number. Functions given anything else return their empty result (NaN, an
+ * empty list, an empty name or set) instead of guessing.
+ *
+ * @example
+ * isEdo(31) // => true
+ * isEdo(0) // => false
+ * isEdo(2.5) // => false
+ */
+export function isEdo(edo: unknown): edo is number {
+  return typeof edo === "number" && Number.isSafeInteger(edo) && edo > 0;
+}
+
+/**
+ * The edo of an `{ edo }` options object: undefined when none is given, NaN
+ * when it is given but is not an EDO (see `isEdo`). Only a real object counts:
+ * functions are often `map` callbacks, which pass the array index next.
+ *
+ * @example
+ * edoOption({ edo: 24 }) // => 24
+ * edoOption({}) // => undefined
+ * edoOption({ edo: 0 }) // => NaN
+ */
+export function edoOption(options: unknown): number | undefined {
+  const edo =
+    options && typeof options === "object"
+      ? (options as { edo?: unknown }).edo
+      : undefined;
+  return edo === undefined ? undefined : isEdo(edo) ? edo : NaN;
+}
+
+/**
  * Size of the fifth, in steps, of an equal division of the octave (EDO).
  * It uses the closest approximation to a just 3/2 (the "patent" fifth), so
  * 12 => 7, 19 => 11, 24 => 14, 31 => 18
  */
 export function edoFifth(edo: number): number {
+  if (!isEdo(edo)) return NaN;
   return Math.round(edo * Math.log2(3 / 2));
 }
 
@@ -172,6 +205,15 @@ const MAX_FIFTH_ERROR_CENTS = 15;
 const profileCache: Record<number, EdoProfile> = {};
 
 export function edoProfile(edo: number): EdoProfile {
+  if (!isEdo(edo)) {
+    return {
+      edo,
+      fifth: NaN,
+      sharp: NaN,
+      fifthErrorCents: NaN,
+      spelling: "proportional",
+    };
+  }
   if (profileCache[edo]) return profileCache[edo];
   const fifth = edoFifth(edo);
   const sharp = edoSharp(edo);
@@ -197,6 +239,7 @@ const roundSymmetric = (n: number) => Math.sign(n) * Math.round(Math.abs(n));
  * EDO instead of stacking fifths.
  */
 export function edoSteps(pitch: Pitch, edo = 12): number {
+  if (!isEdo(edo)) return NaN;
   const [f, o = 0] = coordinates(pitch);
   const ups = (pitch.dir ?? 1) * (pitch.ups ?? 0);
   let steps: number;
@@ -233,6 +276,7 @@ export function edoCrossesNatural(
   pitch: Pick<Pitch, "step" | "alt" | "ups">,
   edo: number,
 ): boolean {
+  if (!isEdo(edo)) return false;
   const natural = (step: number) =>
     edoChroma({ step: mod(step, 7), alt: 0 }, edo);
   const own = natural(pitch.step);

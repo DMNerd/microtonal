@@ -1,6 +1,6 @@
 import { all, ChordType, forEdo, tier } from "@tonaljs/chord-type";
 import { get as pcset, modes } from "@tonaljs/pcset";
-import { edoChroma } from "@tonaljs/pitch";
+import { edoChroma, edoOption, isEdo } from "@tonaljs/pitch";
 import { interval } from "@tonaljs/pitch-interval";
 import { note } from "@tonaljs/pitch-note";
 
@@ -122,10 +122,8 @@ function findMatches(
   weight: number,
   options: Partial<DetectOptions>,
 ): FoundChord[] {
-  const edo =
-    Number.isInteger(options.edo) && (options.edo as number) > 0
-      ? (options.edo as number)
-      : 12;
+  const edo = edoOption(options) ?? 12;
+  if (!isEdo(edo)) return [];
   const rules = fifthRules(edo);
   const chordTypes = edo === 12 ? all() : forEdo(edo);
   const tonic = notes[0];

@@ -47,6 +47,9 @@ describe("detect in other EDOs", () => {
     expect(detect(["C", "E", "G", "Bb↓"], Q24)[0]).toBe("C7(↓7)");
     expect(detect(["C", "E", "G", "Bb↓"], { edo: 31 })[0]).toBe("C7(↓7)");
     expect(detect(["C", "E↓", "G", "Bb↓"], { edo: 53 })[0]).toBe("C7(↓3,↓7)");
+    // where no other chord has its notes, 4:5:6:7 is har7
+    expect(detect(["C", "E", "G", "Bbb"], { edo: 19 })[0]).toBe("Char7");
+    expect(detect(["C", "E↓", "G", "Bb↓↓"], { edo: 72 })[0]).toBe("Char7");
     // 12:14:18:21, the subminor seventh
     expect(detect(["C", "Eb↓", "G", "Bb↓"], { edo: 31 })[0]).toBe("Cm7(↓3,↓7)");
   });

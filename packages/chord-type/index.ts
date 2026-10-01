@@ -6,10 +6,11 @@ import {
   PcsetNum,
   projectTypesToEdo,
 } from "@tonaljs/pcset";
-import { edoKey, isEdo } from "@tonaljs/pitch";
-import { interval } from "@tonaljs/pitch-interval";
+import { edoKey, edoOption, isEdo } from "@tonaljs/pitch";
+import { interval, intervalFromEdoSteps } from "@tonaljs/pitch-interval";
 import data from "./data";
 import microtonalData from "./microtonal-data";
+import ratioData from "./ratio-data";
 
 export type ChordQuality =
   "Major" | "Minor" | "Augmented" | "Diminished" | "Unknown";
@@ -35,6 +36,14 @@ let microtonal: ChordType[] = [];
 let index: Record<ChordTypeName, ChordType> = Object.create(null);
 let edoCache: Record<string, ChordType[]> = {};
 let tiers: Record<string, number> = Object.create(null);
+let ratioChords: RatioChord[] = [];
+let ratioCache: Record<string, ChordType | undefined> = {};
+
+interface RatioChord {
+  name: string;
+  ratios: number[];
+  aliases: string[];
+}
 
 /**
  * Given a chord name or chroma, return the chord properties
@@ -42,9 +51,18 @@ let tiers: Record<string, number> = Object.create(null);
  * @example
  * import { get } from 'tonaljs/chord-type'
  * get('major') // => { name: 'major', ... }
+ * get('har7', { edo: 72 }).intervals // => ["1P", "↓3M", "5P", "↓↓7m"]
  */
-export function get(type: ChordTypeName): ChordType {
-  return index[type] || NoChordType;
+export function get(
+  type: ChordTypeName,
+  options?: Partial<{ edo: number }>,
+): ChordType {
+  const edo = edoOption(options);
+  return (
+    (edo !== undefined ? ratioChordIn(String(type), edo) : undefined) ??
+    index[type] ??
+    NoChordType
+  );
 }
 
 /** @deprecated */
@@ -97,9 +115,62 @@ export function forEdo(edo: number): ChordType[] {
   if (!isEdo(edo)) return [];
   const key = edoKey(edo);
   if (!edoCache[key]) {
-    edoCache[key] = projectTypesToEdo(dictionary, microtonal, edo);
+    const types = projectTypesToEdo(dictionary, microtonal, edo);
+    const seen = new Set(types.map((t) => t.chroma));
+    for (const { name } of edo === 12 ? [] : ratioChords) {
+      const chord = ratioChordIn(name, edo);
+      if (chord && !seen.has(chord.chroma)) {
+        seen.add(chord.chroma);
+        types.push(chord);
+      }
+    }
+    edoCache[key] = types;
   }
   return edoCache[key].slice();
+}
+
+/**
+ * Add a chord defined by frequency ratios, built in each EDO from the
+ * nearest steps (not in 12-EDO, which keeps the traditional dictionary)
+ * @example
+ * addFromRatios(["1/1", "5/4", "3/2", "7/4"], ["har7"], "harmonic seventh")
+ */
+export function addFromRatios(
+  ratios: string[],
+  aliases: string[],
+  fullName: string,
+) {
+  const values = ratios.map((r) => {
+    const [n, d = "1"] = r.split("/");
+    return Number(n) / Number(d);
+  });
+  ratioChords.push({ name: fullName, ratios: values, aliases });
+  edoCache = {};
+  ratioCache = {};
+}
+
+function ratioChordIn(name: string, edo: number): ChordType | undefined {
+  const chord = ratioChords.find(
+    (c) => c.name === name || c.aliases.includes(name),
+  );
+  if (!chord || !isEdo(edo) || edo === 12) return undefined;
+  const key = `${edoKey(edo)}:${chord.name}`;
+  if (!(key in ratioCache)) {
+    const steps = chord.ratios.map((r) => Math.round(edo * Math.log2(r)));
+    // tones that merge in this EDO
+    const distinct = steps.every((s, i) => i === 0 || s > steps[i - 1]);
+    const intervals = steps.map((s) => intervalFromEdoSteps(s, edo));
+    ratioCache[key] = distinct
+      ? {
+          ...pcset(intervals, { edo }),
+          name: chord.name,
+          quality: getQuality(intervals),
+          intervals,
+          aliases: chord.aliases,
+        }
+      : undefined;
+  }
+  return ratioCache[key];
 }
 
 /**
@@ -108,8 +179,10 @@ export function forEdo(edo: number): ChordType[] {
 export function removeAll() {
   dictionary = [];
   microtonal = [];
+  ratioChords = [];
   index = Object.create(null);
   edoCache = {};
+  ratioCache = {};
   tiers = Object.create(null);
 }
 
@@ -118,7 +191,10 @@ export function removeAll() {
  * @example
  * ChordType.tier(ChordType.get("major")) // => 0
  */
-export function tier(type: Pick<ChordType, "intervals">): number {
+export function tier(
+  type: Pick<ChordType, "intervals"> & { name?: string },
+): number {
+  if (ratioChords.some((c) => c.name === type.name)) return 0;
   return tiers[type.intervals.join(" ")] ?? 1;
 }
 
@@ -186,6 +262,9 @@ microtonalData.forEach(([ivls, fullName, names]: string[]) => {
   add(ivls.split(" "), names.split(" "), fullName);
   tiers[ivls] = 0;
 });
+ratioData.forEach(([fullName, ratios, names]: string[]) =>
+  addFromRatios(ratios.split(" "), names.split(" "), fullName),
+);
 
 /** @deprecated */
 export default {
@@ -197,6 +276,7 @@ export default {
   forEdo,
   tier,
   add,
+  addFromRatios,
   removeAll,
   keys,
   // deprecated

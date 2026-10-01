@@ -81,9 +81,12 @@ Developed on the `main` branch. Last synced with upstream Tonal `main` at
 6. **Scales of other EDOs** — _done_: mahur and bayati shuri, the seven mosh
    (mohajira) modes, and temperament scales built per EDO from their
    generator (`ScaleType.addTemperament`, `Scale.get(name, { edo })`).
+7. **More microtonal chords** — _done_: harmonic and subharmonic chords
+   (`har7`, `sub7`…) built per EDO from their ratios
+   (`ChordType.addFromRatios`, `Chord.get(name, { edo })`).
 
-Planned, roughly in order: names for more microtonal chords, microtonal MIDI
-(pitch bend), and publishing under the fork's own package names.
+Planned, roughly in order: microtonal MIDI (pitch bend), and publishing under
+the fork's own package names.
 
 ### Syncing with upstream
 
@@ -332,27 +335,48 @@ Pcset.isEqual(["C", "E↓"], ["C", "Eb↑"], { edo: 24 }); // => true
 
 A microtonal chord dictionary is added, spelled in ups and downs:
 
-| Name                             | Intervals     | Symbol      |
-| -------------------------------- | ------------- | ----------- |
-| downmajor                        | 1P ↓3M 5P     | `(↓3)`, `n` |
-| upmajor                          | 1P ↑3M 5P     | `(↑3)`      |
-| upminor                          | 1P ↑3m 5P     | `m(↑3)`     |
-| downminor                        | 1P ↓3m 5P     | `m(↓3)`     |
-| suspended downsecond             | 1P ↓2M 5P     | `sus↓2`     |
-| suspended upfourth               | 1P ↑4P 5P     | `sus↑4`     |
-| dominant seventh downmajor third | 1P ↓3M 5P 7m  | `7(↓3)`     |
-| downmajor seventh                | 1P ↓3M 5P ↓7m | `7(↓3,↓7)`  |
-| harmonic seventh                 | 1P 3M 5P ↓7m  | `7(↓7)`     |
-| upminor seventh                  | 1P ↑3m 5P ↑7m | `m7(↑3,↑7)` |
-| downminor seventh                | 1P ↓3m 5P ↓7m | `m7(↓3,↓7)` |
-| major seventh downmajor third    | 1P ↓3M 5P 7M  | `maj7(↓3)`  |
-| minor downmajor seventh          | 1P 3m 5P ↓7M  | `m(↓maj7)`  |
+| Name                               | Intervals     | Symbol      |
+| ---------------------------------- | ------------- | ----------- |
+| downmajor                          | 1P ↓3M 5P     | `(↓3)`, `n` |
+| upmajor                            | 1P ↑3M 5P     | `(↑3)`      |
+| upminor                            | 1P ↑3m 5P     | `m(↑3)`     |
+| downminor                          | 1P ↓3m 5P     | `m(↓3)`     |
+| suspended downsecond               | 1P ↓2M 5P     | `sus↓2`     |
+| suspended upfourth                 | 1P ↑4P 5P     | `sus↑4`     |
+| dominant seventh downmajor third   | 1P ↓3M 5P 7m  | `7(↓3)`     |
+| downmajor seventh                  | 1P ↓3M 5P ↓7m | `7(↓3,↓7)`  |
+| dominant seventh downminor seventh | 1P 3M 5P ↓7m  | `7(↓7)`     |
+| upminor seventh                    | 1P ↑3m 5P ↑7m | `m7(↑3,↑7)` |
+| downminor seventh                  | 1P ↓3m 5P ↓7m | `m7(↓3,↓7)` |
+| major seventh downmajor third      | 1P ↓3M 5P 7M  | `maj7(↓3)`  |
+| minor downmajor seventh            | 1P 3m 5P ↓7M  | `m(↓maj7)`  |
 
-The 7-limit chords are found where they are spelled this way: 4:5:6:7 is
-`7(↓7)` in 24- and 31-EDO, `7(↓3)` in 22-EDO and `7(↓3,↓7)` in 41- and
-53-EDO; 12:14:18:21 is `m7(↓3,↓7)` in 24, 31, 41 and 53-EDO (plain `m7` in
-22-EDO). EDOs that need two ups or downs for them (72-EDO) and EDOs without
-ups (19-EDO, where 4:5:6:7 is `1P 3M 5P 6A`) don't name them yet.
+**Harmonic and subharmonic chords.** Following the Xenharmonic Wiki's `har`
+and `sub` names, chords defined by frequency ratios are built in each EDO from
+the nearest steps, so they are found with an `edo` (never in 12-EDO, which
+keeps the traditional dictionary):
+
+| Name                 | Ratios                 | Symbol  |
+| -------------------- | ---------------------- | ------- |
+| harmonic seventh     | 4:5:6:7                | `har7`  |
+| harmonic ninth       | 4:5:6:7:9              | `har9`  |
+| harmonic eleventh    | 4:5:6:7:9:11           | `har11` |
+| harmonic sixth       | 6:7:9:10               | `har6`  |
+| subharmonic seventh  | 7:6:5:4 (subharmonics) | `sub7`  |
+| subharmonic ninth    | 9:7:6:5:4              | `sub9`  |
+| subharmonic eleventh | 11:9:7:6:5:4           | `sub11` |
+| subharmonic sixth    | 12:10:8:7              | `sub6`  |
+
+```js
+Chord.get("Char7", { edo: 72 }).notes; // => ["C", "E↓", "G", "Bb↓↓"]
+Chord.detect(["C", "E", "G", "Bbb"], { edo: 19 }); // => ["Char7"]
+ChordType.addFromRatios(["1/1", "5/4", "3/2", "15/8"], ["j7"], "just maj7");
+```
+
+`ChordType.forEdo` offers them where no other chord has the same notes: in
+24- and 31-EDO 4:5:6:7 keeps its spelled name `7(↓7)`, in 41- and 53-EDO
+`7(↓3,↓7)`. The wiki's short forms (`h7`, `s7`) aren't used, since `h7` is
+already the half-diminished chord in Tonal.
 
 Symbols put the altered degrees in parentheses: `^` already means major in
 Tonal (`C^7`), and an arrow straight after the root is read as part of the

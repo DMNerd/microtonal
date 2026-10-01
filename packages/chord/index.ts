@@ -109,16 +109,21 @@ function tokenizeBass(note: string, chord: string): ChordNameTokens {
 
 /**
  * Get a Chord from a chord name.
+ * @example
+ * get("Char7", { edo: 72 }).notes // => ["C", "E↓", "G", "Bb↓↓"]
  */
-export function get(src: ChordNameOrTokens): Chord {
+export function get(
+  src: ChordNameOrTokens,
+  options?: Partial<{ edo: number }>,
+): Chord {
   if (Array.isArray(src)) {
-    return getChord(src[1] || "", src[0], src[2]);
+    return getChord(src[1] || "", src[0], src[2], options);
   } else if (src === "") {
     return NoChord;
   } else {
     const [tonic, type, bass] = tokenize(src);
-    const chord = getChord(type, tonic, bass);
-    return chord.empty ? getChord(src) : chord;
+    const chord = getChord(type, tonic, bass, options);
+    return chord.empty ? getChord(src, undefined, undefined, options) : chord;
   }
 }
 
@@ -133,8 +138,9 @@ export function getChord(
   typeName: string,
   optionalTonic?: string,
   optionalBass?: string,
+  options?: Partial<{ edo: number }>,
 ): Chord {
-  const type = getChordType(typeName);
+  const type = getChordType(typeName, options);
   const tonic = note(optionalTonic || "");
   const bass = note(optionalBass || "");
 

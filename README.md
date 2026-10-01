@@ -78,10 +78,12 @@ Developed on the `main` branch. Last synced with upstream Tonal `main` at
    chords (harmonic and downminor seventh), every EDO spelled by fifths as on
    the Xenharmonic Wiki, with a global proportional fallback
    (`setEdoSpelling`) and per-EDO overrides (`setEdoProfile`).
+6. **Scales of other EDOs** — _done_: mahur and bayati shuri, the seven mosh
+   (mohajira) modes, and temperament scales built per EDO from their
+   generator (`ScaleType.addTemperament`, `Scale.get(name, { edo })`).
 
-Planned, roughly in order: scales of other EDOs (beyond the maqamat), names
-for more microtonal chords, microtonal MIDI (pitch bend), and publishing under
-the fork's own package names.
+Planned, roughly in order: names for more microtonal chords, microtonal MIDI
+(pitch bend), and publishing under the fork's own package names.
 
 ### Syncing with upstream
 
@@ -411,33 +413,81 @@ upstream test changed: they only cover cases where both orders agree.
 
 #### Scales
 
-A microtonal scale dictionary is added, starting with Arabic maqamat
-(ascending forms, from [Maqam World](https://www.maqamworld.com/en/maqam.php)):
+A microtonal scale dictionary is added: Arabic maqamat (ascending forms, from
+[Maqam World](https://www.maqamworld.com/en/maqam.php)) and the mosh modes.
 
-| Name   | Intervals                  | Notes (traditional tonic) |
-| ------ | -------------------------- | ------------------------- |
-| rast   | 1P 2M ↓3M 4P 5P 6M ↓7M     | C D E↓ F G A B↓           |
-| bayati | 1P ↓2M 3m 4P 5P 6m 7m      | D E↓ F G A Bb C           |
-| saba   | 1P ↓2M 3m 4d 5P 6m 7m      | D E↓ F Gb A Bb C          |
-| sikah  | 1P ↑2m ↑3m ↑4P 5P ↑6m ↑7m  | E↓ F G A B↓ C D           |
-| huzam  | 1P ↑2m ↑3m ↑4d ↑5P ↑6m ↑7m | E↓ F G Ab B C D           |
-| iraq   | 1P ↑2m ↑3m 4P ↑5d ↑6m ↑7m  | B↓ C D E↓ F G A           |
-| nairuz | 1P 2M ↓3M 4P 5P ↓6M 7m     | C D E↓ F G A↓ Bb          |
-| suznak | 1P 2M ↓3M 4P 5P 6m 7M      | C D E↓ F G Ab B           |
+| Name         | Intervals                  | Notes (traditional tonic) |
+| ------------ | -------------------------- | ------------------------- |
+| rast         | 1P 2M ↓3M 4P 5P 6M ↓7M     | C D E↓ F G A B↓           |
+| bayati       | 1P ↓2M 3m 4P 5P 6m 7m      | D E↓ F G A Bb C           |
+| saba         | 1P ↓2M 3m 4d 5P 6m 7m      | D E↓ F Gb A Bb C          |
+| sikah        | 1P ↑2m ↑3m ↑4P 5P ↑6m ↑7m  | E↓ F G A B↓ C D           |
+| huzam        | 1P ↑2m ↑3m ↑4d ↑5P ↑6m ↑7m | E↓ F G Ab B C D           |
+| iraq         | 1P ↑2m ↑3m 4P ↑5d ↑6m ↑7m  | B↓ C D E↓ F G A           |
+| nairuz       | 1P 2M ↓3M 4P 5P ↓6M 7m     | C D E↓ F G A↓ Bb          |
+| suznak       | 1P 2M ↓3M 4P 5P 6m 7M      | C D E↓ F G Ab B           |
+| mahur        | 1P 2M ↓3M 4P 5P 6M 7M      | C D E↓ F G A B            |
+| bayati shuri | 1P ↓2M 3m 4P 5d 6M 7m      | D E↓ F G Ab B C           |
 
 Maqam World shows the scales as images, so huzam, 'iraq, nairuz and suznak are
 built from the ajnas each page names (huzam: Sikah on the tonic, Hijaz on the
 3rd, Rast on the 6th; 'iraq: Sikah, Bayati on the 3rd, Rast on the 6th;
-nairuz: Rast, Bayati on the 5th; suznak: Rast, Hijaz on the 5th). Maqamat
+nairuz: Rast, Bayati on the 5th; suznak: Rast, Hijaz on the 5th; mahur:
+Rast, Upper 'Ajam on the 5th; bayati shuri: Bayati, Hijaz on the 4th). Maqamat
 whose pages don't pin every note down are left out: jiharkah's 3rd and 4th
 degrees are "played lower than notated" by no fixed amount, and husayni's
 page only names its lower jins.
+
+The seven modes of mosh (3L 4s), the neutral third scale of mohajira, come
+from the [Xenharmonic Wiki](https://en.xen.wiki/w/3L_4s), named as there
+(with the alternative names as aliases). They are spelled so that 17, 24 and
+31-EDO give the wiki's step patterns:
+
+| Name            | Intervals                | Steps   |
+| --------------- | ------------------------ | ------- |
+| dril (mohajira) | 1P 2M ↑3m ↑4P 5P 6M ↑7m  | LsLsLss |
+| gil             | 1P 2M ↑3m ↑4P 5P ↑6m ↑7m | LsLssLs |
+| kleeth          | 1P 2M ↑3m 4P 5P ↑6m ↑7m  | LssLsLs |
+| bish            | 1P ↑2m ↑3m 4P 5P ↑6m ↑7m | sLsLsLs |
+| fish            | 1P ↑2m ↑3m 4P 5P ↑6m 7m  | sLsLssL |
+| jwl             | 1P ↑2m ↑3m 4P ↓5P ↑6m 7m | sLssLsL |
+| led             | 1P ↑2m 3m 4P ↓5P ↑6m 7m  | ssLsLsL |
 
 They follow the same rules as the microtonal chords: reachable by name
 (`Scale.get("C rast")`, aliases like `"maqam rast"` and `"segah"`), not part
 of `ScaleType.all()` or `Scale.names()`, listed by
 `ScaleType.allMicrotonal()`, and included by `ScaleType.forEdo(edo)` only
 where an up is smaller than a sharp.
+
+**Temperament scales.** Scales of regular temperaments are defined by a
+generator, not a spelling, so they are built in each EDO the temperament
+belongs to (generators and EDOs from each temperament's Xenharmonic Wiki
+page), in their brightest mode, as TAMNAMS lists first. They are only found
+with an `edo`:
+
+| Name          | Shape | EDOs           |
+| ------------- | ----- | -------------- |
+| porcupine[7]  | 1L 6s | 15, 22         |
+| magic[7]      | 3L 4s | 19, 22, 41     |
+| kleismic[7]   | 4L 3s | 15, 19, 34, 53 |
+| slendric[5]   | 1L 4s | 31, 36, 41     |
+| sensi[8]      | 3L 5s | 19, 27, 46     |
+| orwell[9]     | 4L 5s | 22, 31, 53     |
+| negri[9]      | 1L 8s | 19, 29         |
+| miracle[10]   | 1L 9s | 31, 41, 72     |
+| pajara[10]    | 2L 8s | 22             |
+| blackwood[10] | 5L 5s | 15, 20, 25     |
+
+```js
+Scale.get("C porcupine[7]", { edo: 22 }).notes;
+// => ["C", "D", "E↓", "Gb", "G", "A↓", "Bb↑"]
+ScaleType.forEdo(22).map((t) => t.name); // => [..., "porcupine[7]", ...]
+ScaleType.addTemperament("porcupine[8]", {
+  size: 8,
+  generator: 163,
+  edos: [15, 22],
+});
+```
 
 `Scale` functions take an `edo` option:
 

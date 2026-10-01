@@ -40,7 +40,7 @@ const scaleTypesIn = (edo: number) =>
 const chordTypesIn = (edo: number) =>
   edo === 12 ? chordTypes() : chordTypesForEdo(edo);
 const scaleChroma = (name: string, edo: number) => {
-  const s = get(name);
+  const s = get(name, { edo });
   return edo === 12 || s.empty ? s.chroma : pcset(s.intervals, { edo }).chroma;
 };
 
@@ -106,10 +106,13 @@ export const names = scaleTypeNames;
 /**
  * Get a Scale from a scale name.
  */
-export function get(src: ScaleName | ScaleNameTokens): Scale {
+export function get(
+  src: ScaleName | ScaleNameTokens,
+  options?: Partial<EdoOptions>,
+): Scale {
   const tokens = Array.isArray(src) ? src : tokenize(src);
   const tonic = note(tokens[0]).name;
-  const st = getScaleType(tokens[1]);
+  const st = getScaleType(tokens[1], options);
   if (st.empty) {
     return NoScale;
   }
@@ -265,12 +268,12 @@ export function modeNames(
   name: string,
   options?: Partial<EdoOptions>,
 ): ScaleMode[] {
-  const s = get(name);
+  const edo = edoOf(options);
+  if (!isEdo(edo)) return [];
+  const s = get(name, { edo });
   if (s.empty) {
     return [];
   }
-  const edo = edoOf(options);
-  if (!isEdo(edo)) return [];
   const nameOf =
     edo === 12
       ? (chroma: string) => get(chroma).name
@@ -294,7 +297,9 @@ function placeInOctave(pc: string, steps: number, edo: number) {
 }
 
 function getEdoNoteNameOf(scale: string | string[], edo: number) {
-  const names = Array.isArray(scale) ? scaleNotes(scale) : get(scale).notes;
+  const names = Array.isArray(scale)
+    ? scaleNotes(scale)
+    : get(scale, { edo }).notes;
   const chromas = names.map((name) => edoChroma(note(name), edo));
 
   return (noteOrSteps: string | number): string | undefined => {

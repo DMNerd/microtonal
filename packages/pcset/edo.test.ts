@@ -46,6 +46,35 @@ describe("pcset in other EDOs", () => {
     expect(Pcset.get([], Q24).normalized).toBe("0".repeat(24));
   });
 
+  test("normalized is the smallest rotation that starts with a pitch class", () => {
+    const rotations = (chroma: string) =>
+      chroma.split("").map((_, i) => chroma.slice(i) + chroma.slice(0, i));
+    // a deterministic spread of sets, including repeating patterns (ties)
+    const chromas = [
+      "101101101101101101101101",
+      "1001001001001001001",
+      "10101010101010101010101010101010101010101010101010101",
+    ];
+    for (const edo of [12, 17, 24, 31, 53]) {
+      for (let seed = 1; seed < 200; seed++) {
+        chromas.push(
+          Array.from({ length: edo }, (_, i) =>
+            ((i + 1) * seed * 7919) % 5 < 2 ? "1" : "0",
+          ).join(""),
+        );
+      }
+    }
+    for (const chroma of chromas) {
+      if (!chroma.includes("1")) continue;
+      const expected = rotations(chroma)
+        .filter((r) => r[0] === "1")
+        .sort()[0];
+      expect(Pcset.get(chroma, { edo: chroma.length }).normalized).toBe(
+        expected,
+      );
+    }
+  });
+
   test("interval names", () => {
     expect(edoIntervalNames(12)).toEqual(
       "1P 2m 2M 3m 3M 4P 5d 5P 6m 6M 7m 7M".split(" "),

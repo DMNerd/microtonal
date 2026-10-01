@@ -424,44 +424,35 @@ export default {
 
 //// PRIVATE ////
 
-// rotate chroma using its set number only with bit shifting operations
-function rotateChroma(v: number): number {
-  return ((v << 1) | (v >>> 11)) & 0xfff;
-}
-
-// the smallest rotation that starts with a pitch class (12-EDO, upstream's
-// bit-shifting version). Undefined for the empty set.
-function normalize12(setNum: number): PcsetChroma | undefined {
-  if (setNum === 0) return undefined;
-  let normalizedNum = Infinity;
-  let r = setNum;
-  for (let i = 0; i < 12; i++) {
-    if (r >= 2048 && r < normalizedNum) normalizedNum = r;
-    r = rotateChroma(r);
+// The smallest rotation that starts with a pitch class, in any EDO, or
+// undefined for the empty set. Compares the rotations in place on the chroma
+// written twice instead of building them (upstream rotates the 12-bit set
+// number with bit shifts, which can't hold EDOs past 31).
+function normalizeChroma(chroma: PcsetChroma): PcsetChroma | undefined {
+  const edo = chroma.length;
+  const twice = chroma + chroma;
+  let best = -1;
+  for (let i = 0; i < edo; i++) {
+    if (chroma[i] !== "1") continue;
+    if (best < 0) {
+      best = i;
+      continue;
+    }
+    for (let k = 1; k < edo; k++) {
+      if (twice[i + k] !== twice[best + k]) {
+        if (twice[i + k] < twice[best + k]) best = i;
+        break;
+      }
+    }
   }
-  return setNumToChroma(normalizedNum);
-}
-
-function chromaRotations(chroma: string): string[] {
-  const binary = chroma.split("");
-  return binary.map((_, i) => rotate(i, binary).join(""));
-}
-
-// the smallest rotation that starts with a pitch class, in any EDO
-function normalizeEdo(chroma: PcsetChroma, edo: number): PcsetChroma {
-  return (
-    chromaRotations(chroma)
-      .filter((r) => r[0] === "1")
-      .sort()[0] ?? emptyChroma(edo)
-  );
+  return best < 0 ? undefined : twice.slice(best, best + edo);
 }
 
 function chromaToPcset(chroma: PcsetChroma): Pcset {
   const edo = chroma.length;
   const setNum = chromaToNumber(chroma);
-  const normalized =
-    edo === 12 ? normalize12(setNum) : normalizeEdo(chroma, edo);
-  if (normalized === undefined) {
+  const normalized = normalizeChroma(chroma) ?? emptyChroma(edo);
+  if (edo === 12 && setNum === 0) {
     return EmptyPcset;
   }
 

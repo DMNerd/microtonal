@@ -219,9 +219,12 @@ Pcset.isEqual(["C", "E↓"], ["C", "Eb↑"], { edo: 24 }); // => true
   then plain qualities (P, M, m) before augmented/diminished, then ups before
   downs. In 24-EDO the neutral third is `↑3m`; in 19-EDO step 1 is `1A`.
 - `Pcset.chromas()` still lists the 12-EDO chromas only.
-- `normalized` uses upstream's bit-shifting rotation for 12-EDO sets and
-  string rotations for other EDOs (bit shifts on 32-bit integers can't hold
-  larger EDOs).
+- `normalized` (the smallest rotation starting with a pitch class) is found by
+  comparing rotations in place on the chroma written twice, for every EDO.
+  Upstream rotates the 12-bit set number with bit shifts, which can't hold
+  EDOs past 31; the in-place scan gives the same results and is as fast in
+  12-EDO (about 0.5 µs per new set in 53-EDO, versus 34 µs when building
+  every rotation).
 
 #### Chord types
 

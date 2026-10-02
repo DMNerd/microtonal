@@ -252,6 +252,7 @@ const OTHER_CHORDS = [
   "minor augmented",
   "augmented seventh",
   "major sharp eleventh (lydian)",
+  "quartal triad",
 ];
 data.forEach(([ivls, fullName, names]: string[]) => {
   add(ivls.split(" "), names.split(" "), fullName);

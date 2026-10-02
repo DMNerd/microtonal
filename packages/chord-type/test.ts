@@ -10,10 +10,10 @@ describe("@tonaljs/chord-type", () => {
     // sorted
     expect(ChordType.names().slice(0, 5)).toEqual([
       "fifth",
+      "quartal triad",
       "suspended fourth",
       "suspended fourth seventh",
       "augmented",
-      "major seventh flat sixth",
     ]);
   });
 
@@ -21,13 +21,13 @@ describe("@tonaljs/chord-type", () => {
     // sorted
     expect(ChordType.symbols().slice(0, 3)).toEqual([
       "5",
+      "7sus4no5",
       "M7#5sus4",
-      "7#5sus4",
     ]);
   });
 
   test("all returns all chords", () => {
-    expect(ChordType.all()).toHaveLength(107);
+    expect(ChordType.all()).toHaveLength(108);
   });
 
   test("get ", () => {

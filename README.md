@@ -388,7 +388,7 @@ Tonal (`C^7`), and an arrow straight after the root is read as part of the
 root (`C↓7` is a C↓ dominant seventh).
 
 - `ChordType.get` finds these by name or symbol. `ChordType.all()` still
-  returns only the 107 traditional chords, and the 12-EDO chroma index is
+  returns only the 108 traditional chords, and the 12-EDO chroma index is
   untouched: in 12-EDO `↓3M` is just `3m`, so a downmajor chord would
   otherwise shadow the minor chord. `ChordType.allMicrotonal()` lists them.
 - `ChordType.forEdo(edo)` returns the chord types of an EDO, with `chroma`,
@@ -597,6 +597,10 @@ Behaviour that changes even for plain 12-TET input:
 - **Chord detection ranking**: common chords in inversion come before rare
   chords in root position (`E C G` => `CM/E` first, upstream: `Em#5`). See
   [Chord detection and chords](#chord-detection-and-chords).
+- **Quartal triad**: the three-note quartal voicing `1P 4P 7m` is added as
+  "quartal triad" (`7sus4no5`; upstream only has the four-note `quartal`), so
+  the dictionary has 108 chords. It ranks with the less common named chords,
+  so `C F Bb` still detects `Fsus4/C` first, with `C7sus4no5` added last.
 
 Every future fix that changes upstream behaviour is listed here.
 

@@ -6,7 +6,7 @@ const find = (types: ReturnType<typeof ChordType.forEdo>, name: string) =>
 
 describe("chord types in other EDOs", () => {
   test("microtonal chords are kept out of the 12-EDO dictionary", () => {
-    expect(ChordType.all()).toHaveLength(107);
+    expect(ChordType.all()).toHaveLength(108);
     expect(ChordType.all().some((t) => t.name === "downmajor")).toBe(false);
     // the minor chord chroma still points to the minor chord
     expect(ChordType.get("100100010000").name).toBe("minor");
@@ -23,7 +23,7 @@ describe("chord types in other EDOs", () => {
 
   test("forEdo(12) has the traditional chords only", () => {
     const types = ChordType.forEdo(12);
-    expect(types).toHaveLength(107);
+    expect(types).toHaveLength(108);
     expect(find(types, "major")?.chroma).toBe("100010010000");
     expect(find(types, "downmajor")).toBeUndefined();
   });

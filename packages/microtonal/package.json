@@ -1,0 +1,375 @@
+{
+  "name": "@dmnerd/microtonal",
+  "version": "0.1.0",
+  "description": "Tonal music theory library extended to any equal division of the octave (EDO), with ups and downs notation",
+  "keywords": [
+    "music",
+    "theory",
+    "music-theory",
+    "microtonal",
+    "xenharmonic",
+    "edo",
+    "tonal",
+    "chord",
+    "scale",
+    "interval"
+  ],
+  "license": "MIT",
+  "author": "DMNerd",
+  "contributors": [
+    "danigb <danigb@gmail.com> (original Tonal author)"
+  ],
+  "homepage": "https://github.com/DMNerd/microtonal#readme",
+  "bugs": "https://github.com/DMNerd/microtonal/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DMNerd/microtonal.git",
+    "directory": "packages/microtonal"
+  },
+  "sideEffects": false,
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "abc-notation": [
+        "./dist/abc-notation.d.ts"
+      ],
+      "array": [
+        "./dist/array.d.ts"
+      ],
+      "chord": [
+        "./dist/chord.d.ts"
+      ],
+      "chord-detect": [
+        "./dist/chord-detect.d.ts"
+      ],
+      "chord-type": [
+        "./dist/chord-type.d.ts"
+      ],
+      "collection": [
+        "./dist/collection.d.ts"
+      ],
+      "core": [
+        "./dist/core.d.ts"
+      ],
+      "duration-value": [
+        "./dist/duration-value.d.ts"
+      ],
+      "interval": [
+        "./dist/interval.d.ts"
+      ],
+      "key": [
+        "./dist/key.d.ts"
+      ],
+      "midi": [
+        "./dist/midi.d.ts"
+      ],
+      "mode": [
+        "./dist/mode.d.ts"
+      ],
+      "note": [
+        "./dist/note.d.ts"
+      ],
+      "pcset": [
+        "./dist/pcset.d.ts"
+      ],
+      "progression": [
+        "./dist/progression.d.ts"
+      ],
+      "range": [
+        "./dist/range.d.ts"
+      ],
+      "rhythm-pattern": [
+        "./dist/rhythm-pattern.d.ts"
+      ],
+      "roman-numeral": [
+        "./dist/roman-numeral.d.ts"
+      ],
+      "scale": [
+        "./dist/scale.d.ts"
+      ],
+      "scale-type": [
+        "./dist/scale-type.d.ts"
+      ],
+      "time-signature": [
+        "./dist/time-signature.d.ts"
+      ],
+      "voice-leading": [
+        "./dist/voice-leading.d.ts"
+      ],
+      "voicing": [
+        "./dist/voicing.d.ts"
+      ],
+      "voicing-dictionary": [
+        "./dist/voicing-dictionary.d.ts"
+      ]
+    }
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./abc-notation": {
+      "import": {
+        "types": "./dist/abc-notation.d.mts",
+        "default": "./dist/abc-notation.mjs"
+      },
+      "require": {
+        "types": "./dist/abc-notation.d.ts",
+        "default": "./dist/abc-notation.js"
+      }
+    },
+    "./array": {
+      "import": {
+        "types": "./dist/array.d.mts",
+        "default": "./dist/array.mjs"
+      },
+      "require": {
+        "types": "./dist/array.d.ts",
+        "default": "./dist/array.js"
+      }
+    },
+    "./chord": {
+      "import": {
+        "types": "./dist/chord.d.mts",
+        "default": "./dist/chord.mjs"
+      },
+      "require": {
+        "types": "./dist/chord.d.ts",
+        "default": "./dist/chord.js"
+      }
+    },
+    "./chord-detect": {
+      "import": {
+        "types": "./dist/chord-detect.d.mts",
+        "default": "./dist/chord-detect.mjs"
+      },
+      "require": {
+        "types": "./dist/chord-detect.d.ts",
+        "default": "./dist/chord-detect.js"
+      }
+    },
+    "./chord-type": {
+      "import": {
+        "types": "./dist/chord-type.d.mts",
+        "default": "./dist/chord-type.mjs"
+      },
+      "require": {
+        "types": "./dist/chord-type.d.ts",
+        "default": "./dist/chord-type.js"
+      }
+    },
+    "./collection": {
+      "import": {
+        "types": "./dist/collection.d.mts",
+        "default": "./dist/collection.mjs"
+      },
+      "require": {
+        "types": "./dist/collection.d.ts",
+        "default": "./dist/collection.js"
+      }
+    },
+    "./core": {
+      "import": {
+        "types": "./dist/core.d.mts",
+        "default": "./dist/core.mjs"
+      },
+      "require": {
+        "types": "./dist/core.d.ts",
+        "default": "./dist/core.js"
+      }
+    },
+    "./duration-value": {
+      "import": {
+        "types": "./dist/duration-value.d.mts",
+        "default": "./dist/duration-value.mjs"
+      },
+      "require": {
+        "types": "./dist/duration-value.d.ts",
+        "default": "./dist/duration-value.js"
+      }
+    },
+    "./interval": {
+      "import": {
+        "types": "./dist/interval.d.mts",
+        "default": "./dist/interval.mjs"
+      },
+      "require": {
+        "types": "./dist/interval.d.ts",
+        "default": "./dist/interval.js"
+      }
+    },
+    "./key": {
+      "import": {
+        "types": "./dist/key.d.mts",
+        "default": "./dist/key.mjs"
+      },
+      "require": {
+        "types": "./dist/key.d.ts",
+        "default": "./dist/key.js"
+      }
+    },
+    "./midi": {
+      "import": {
+        "types": "./dist/midi.d.mts",
+        "default": "./dist/midi.mjs"
+      },
+      "require": {
+        "types": "./dist/midi.d.ts",
+        "default": "./dist/midi.js"
+      }
+    },
+    "./mode": {
+      "import": {
+        "types": "./dist/mode.d.mts",
+        "default": "./dist/mode.mjs"
+      },
+      "require": {
+        "types": "./dist/mode.d.ts",
+        "default": "./dist/mode.js"
+      }
+    },
+    "./note": {
+      "import": {
+        "types": "./dist/note.d.mts",
+        "default": "./dist/note.mjs"
+      },
+      "require": {
+        "types": "./dist/note.d.ts",
+        "default": "./dist/note.js"
+      }
+    },
+    "./pcset": {
+      "import": {
+        "types": "./dist/pcset.d.mts",
+        "default": "./dist/pcset.mjs"
+      },
+      "require": {
+        "types": "./dist/pcset.d.ts",
+        "default": "./dist/pcset.js"
+      }
+    },
+    "./progression": {
+      "import": {
+        "types": "./dist/progression.d.mts",
+        "default": "./dist/progression.mjs"
+      },
+      "require": {
+        "types": "./dist/progression.d.ts",
+        "default": "./dist/progression.js"
+      }
+    },
+    "./range": {
+      "import": {
+        "types": "./dist/range.d.mts",
+        "default": "./dist/range.mjs"
+      },
+      "require": {
+        "types": "./dist/range.d.ts",
+        "default": "./dist/range.js"
+      }
+    },
+    "./rhythm-pattern": {
+      "import": {
+        "types": "./dist/rhythm-pattern.d.mts",
+        "default": "./dist/rhythm-pattern.mjs"
+      },
+      "require": {
+        "types": "./dist/rhythm-pattern.d.ts",
+        "default": "./dist/rhythm-pattern.js"
+      }
+    },
+    "./roman-numeral": {
+      "import": {
+        "types": "./dist/roman-numeral.d.mts",
+        "default": "./dist/roman-numeral.mjs"
+      },
+      "require": {
+        "types": "./dist/roman-numeral.d.ts",
+        "default": "./dist/roman-numeral.js"
+      }
+    },
+    "./scale": {
+      "import": {
+        "types": "./dist/scale.d.mts",
+        "default": "./dist/scale.mjs"
+      },
+      "require": {
+        "types": "./dist/scale.d.ts",
+        "default": "./dist/scale.js"
+      }
+    },
+    "./scale-type": {
+      "import": {
+        "types": "./dist/scale-type.d.mts",
+        "default": "./dist/scale-type.mjs"
+      },
+      "require": {
+        "types": "./dist/scale-type.d.ts",
+        "default": "./dist/scale-type.js"
+      }
+    },
+    "./time-signature": {
+      "import": {
+        "types": "./dist/time-signature.d.mts",
+        "default": "./dist/time-signature.mjs"
+      },
+      "require": {
+        "types": "./dist/time-signature.d.ts",
+        "default": "./dist/time-signature.js"
+      }
+    },
+    "./voice-leading": {
+      "import": {
+        "types": "./dist/voice-leading.d.mts",
+        "default": "./dist/voice-leading.mjs"
+      },
+      "require": {
+        "types": "./dist/voice-leading.d.ts",
+        "default": "./dist/voice-leading.js"
+      }
+    },
+    "./voicing": {
+      "import": {
+        "types": "./dist/voicing.d.mts",
+        "default": "./dist/voicing.mjs"
+      },
+      "require": {
+        "types": "./dist/voicing.d.ts",
+        "default": "./dist/voicing.js"
+      }
+    },
+    "./voicing-dictionary": {
+      "import": {
+        "types": "./dist/voicing-dictionary.d.mts",
+        "default": "./dist/voicing-dictionary.mjs"
+      },
+      "require": {
+        "types": "./dist/voicing-dictionary.d.ts",
+        "default": "./dist/voicing-dictionary.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown --config-loader native",
+    "prepack": "npm run build"
+  }
+}

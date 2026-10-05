@@ -19,6 +19,35 @@ started to power the chord naming ("What's this chord?") and theory features of
 a fretboard tuning visualizer that supports arbitrary EDOs, but it aims to be a
 general-purpose library.
 
+## Install
+
+```bash
+npm install @dmnerd/microtonal
+```
+
+The API is Tonal's, so code written for `tonal` works after changing the
+import:
+
+```js
+import { Chord, Interval, Note } from "@dmnerd/microtonal"; // was "tonal"
+
+Note.edoSteps("E↓4", 24); // => 103
+Chord.get("C7sus4no5").notes; // => ["C", "F", "Bb"]
+```
+
+Upstream publishes every module as its own package (`@tonaljs/note`, ...).
+This fork publishes one package with no dependencies; each module is also a
+subpath, so `@tonaljs/<module>` becomes `@dmnerd/microtonal/<module>`:
+
+```js
+import { transpose } from "@dmnerd/microtonal/note"; // was "@tonaljs/note"
+```
+
+It ships ES modules, CommonJS (`require`) and TypeScript types. In the
+browser, use an ES module CDN such as
+`https://cdn.jsdelivr.net/npm/@dmnerd/microtonal/+esm`; there is no
+`<script>` build with a global like upstream's `tonal.min.js`.
+
 ## How it works: ups and downs
 
 The fork uses [ups and downs notation](https://en.xen.wiki/w/Ups_and_downs_notation)
@@ -87,7 +116,9 @@ Developed on the `main` branch. Last synced with upstream Tonal `main` at
 8. **Microtonal MIDI** — _done_: `Note.edoMidi` and `Midi.freqToMidiBend`
    (MIDI note plus pitch bend).
 
-Planned: publishing under the fork's own package names.
+9. **Published to npm** — _done_: as one package,
+   [`@dmnerd/microtonal`](https://www.npmjs.com/package/@dmnerd/microtonal).
+   See [Install](#install) and [Releasing](#releasing).
 
 ### Syncing with upstream
 
@@ -108,6 +139,23 @@ entries or snapshot exports may need their numbers updated; any change in
 behaviour goes in [Deliberate differences](#deliberate-differences-from-upstream).
 Then update the last sync commit above.
 
+### Releasing
+
+The package is built from `packages/microtonal`. It bundles every workspace
+package from source (the internal `@tonaljs/*` names never reach npm), so the
+other packages don't need building or publishing first. Don't use
+`npm run publish-packages`: that is upstream's flow for the `@tonaljs/*`
+packages.
+
+```sh
+npm run test:all                                 # format, lint, build, test
+npm version <patch|minor|major> -w @dmnerd/microtonal --no-git-tag-version
+npm publish -w @dmnerd/microtonal                # builds it again first
+```
+
+Then commit the version bump and tag it (`git tag microtonal@<version>`).
+Versions follow semver for this package alone, unrelated to Tonal's versions.
+
 ### Implemented so far
 
 #### Notes and intervals
@@ -117,7 +165,7 @@ always written back with arrows (after the accidentals for notes, before the
 number for intervals):
 
 ```js
-import { Interval, Note } from "tonal";
+import { Interval, Note } from "@dmnerd/microtonal";
 
 Note.get("^C#4").name; // => "C#↑4"   (Kite's ASCII prefix also accepted)
 Note.get("vEb").name; // => "Eb↓"
@@ -141,13 +189,12 @@ Interval.edoSteps("↓3M", 24); // => 7  (neutral third)
 Interval.edoSteps("-5P", 19); // => -11
 ```
 
-The low-level versions live in `@tonaljs/pitch`: `edoSteps(pitch, edo)`,
+The low-level versions are exported from the package root: `edoSteps(pitch, edo)`,
 `edoChroma(pitch, edo)`, `edoFifth(edo)` (the EDO's best fifth) and
 `edoSharp(edo)` (size of a sharp: 1 in 12/19-EDO, 2 in 24/31-EDO).
 
 **EDO profiles: fifths or proportional.** Like the Xenharmonic Wiki, the
-fork spells every EDO by stacking fifths. `edoProfile(edo)` (in
-`@tonaljs/pitch`) gives the fifth, the size of a sharp and how far the fifth
+fork spells every EDO by stacking fifths. `edoProfile(edo)` gives the fifth, the size of a sharp and how far the fifth
 is from 3/2:
 
 ```js
@@ -207,8 +254,7 @@ Note.fromEdoSteps(7, 24, { pitchClass: true }); // => "Eb↑"
 ```
 
 Steps are spelled with the simplest name above C (fewest ups and downs), the
-same rule as `Pcset.intervals`; `edoIntervalNames(edo)` in
-`@tonaljs/pitch-interval` gives the whole list.
+same rule as `Pcset.intervals`; `edoIntervalNames(edo)` gives the whole list.
 
 `Interval.fromEdoSteps` does the same for a signed interval size (whole
 octaves included), and `Note.transposeEdoSteps` moves a note by a number of
@@ -228,8 +274,7 @@ In "proportional" EDOs, where a spelled interval can land on another step,
 Interval names never wrap past the octave (no `7A` for a small step), so
 `fromEdoSteps` always gives back the exact size: tested in EDOs 5 to 72.
 
-**Invalid EDOs.** An EDO is a positive whole number (`isEdo` in
-`@tonaljs/pitch`). Every function given anything else returns its empty
+**Invalid EDOs.** An EDO is a positive whole number (`isEdo`). Every function given anything else returns its empty
 result: `NaN` for sizes, `[]` for lists, `""` for names, `null` for
 frequencies and an empty set for `Pcset.get`. An `{ edo }` option that is
 left out still means 12-EDO; an invalid one no longer falls back to 12
@@ -304,7 +349,7 @@ one from notes, intervals or a set number; every `Pcset` has a new `edo`
 property (`12` for traditional sets):
 
 ```js
-import { Pcset } from "tonal";
+import { Pcset } from "@dmnerd/microtonal";
 
 Pcset.get(["C", "E↓", "G"], { edo: 24 }).chroma;
 // => "100000010000001000000000"
@@ -404,7 +449,7 @@ root (`C↓7` is a C↓ dominant seventh).
 `detect` takes an `edo` option:
 
 ```js
-import { Chord } from "tonal";
+import { Chord } from "@dmnerd/microtonal";
 
 Chord.detect(["C", "E↓", "G"], { edo: 24 }); // => ["C(↓3)"]
 Chord.detect(["C", "Eb↑", "G"], { edo: 24 }); // => ["C(↓3)"]
@@ -527,7 +572,7 @@ ScaleType.addTemperament("porcupine[8]", {
 `Scale` functions take an `edo` option:
 
 ```js
-import { Scale } from "tonal";
+import { Scale } from "@dmnerd/microtonal";
 
 Scale.get("E↓ sikah").notes; // => ["E↓", "F", "G", "A", "B↓", "C", "D"]
 Scale.detect(["C", "D", "E↓", "F", "G", "A", "B↓"], { edo: 24 });
@@ -604,216 +649,17 @@ Behaviour that changes even for plain 12-TET input:
 
 Every future fix that changes upstream behaviour is listed here.
 
-Until the fork is published, packages keep their `@tonaljs/*` names, and the
-install instructions below still refer to upstream Tonal. Use this repository
-directly (e.g. as a local or git dependency) to get the microtonal features.
-
----
-
-The rest of this README is the upstream Tonal documentation.
-
-## About Tonal
-
-`tonal` is a music theory library. Contains functions to manipulate tonal
-elements of music (note, intervals, chords, scales, modes, keys). It deals with
-abstractions (not actual music or sound).
-
-`tonal` is implemented in Typescript and published as a collection of Javascript
-npm packages.
-
-It uses a functional programming style: all functions are pure, there is no data
-mutation, and entities are represented by data structures instead of objects.
-
-## Example
-
-```js
-import { Chord, Interval, Note, Scale } from "tonal";
-
-Note.midi("C4"); // => 60
-Note.freq("a4"); // => 440
-Note.accidentals("c#2"); // => '#'
-Note.transpose("C4", "5P"); // => "G4"
-Interval.semitones("5P"); // => 7
-Interval.distance("C4", "G4"); // => "5P"
-
-// Scales
-Scale.get("C major").notes; // => ["C", "D", "E", "F", "G", "A", "B"];
-[1, 3, 5, 7].map(Scale.degrees("C major")); // => ["C", "E", "G", "B"]
-
-Chord.get("Cmaj7").name; // => "C major seventh"
-
-// Chord inversions
-const triad = Chord.degrees("Cm");
-[1, 2, 3].map(triad); // => ["C", "Eb", "G"];
-[2, 3, 1].map(triad); // => ["Eb", "G", "C"];
-[3, 1, 2].map(triad); // => ["G", "C", "Eb"];
-```
-
-## Install
-
-Install all packages at once:
-
-```bash
-npm install --save tonal
-```
-
-You can read [CHANGELOG here](https://github.com/tonaljs/tonal/blob/main/docs/CHANGELOG.md).
-
-## Usage
-
-Tonal is compatible with both ES5 and ES6 modules, and browser.
-
-#### ES6 `import`:
-
-```js
-import { Note, Scale } from "tonal";
-```
-
-#### ES5 `require`:
-
-```js
-const { Note, Scale } = require("tonal");
-```
-
-#### Browser
-
-You can use the browser version from jsdelivr CDN directly in your html:
-
-```html
-<script src="https://cdn.jsdelivr.net/npm/tonal/browser/tonal.min.js"></script>
-<script>
-  console.log(Tonal.Key.minorKey("Ab"));
-</script>
-```
-
-Or if you prefer, grab the
-[minified browser ready version](https://raw.githubusercontent.com/tonaljs/tonal/master/packages/tonal/browser/tonal.min.js)
-from the repository.
-
-#### Bundle size
-
-`tonal` includes all published modules.
-
-Although the final bundle it is small, you can
-reduce bundle sizes even more by installing the modules individually, and
-importing only the functions you need.
-
-Note that individual modules are prefixed with `@tonaljs/`. For example:
-
-```bash
-npm i @tonaljs/note
-```
-
-```js
-import { transpose } from "@tonaljs/note";
-transpose("A4", "P5");
-```
-
 ## Documentation
 
-Visit the [documentation site](https://tonaljs.github.io/tonal/docs) or the README.md of each module 👇
-
-#### Notes and intervals
-
-- [@tonaljs/note](/packages/note): Note operations (simplify, transposeBy )
-- [@tonaljs/midi](/packages/midi): Midi number conversions
-- [@tonaljs/interval](/packages/interval): Interval operations (add, simplify,
-  invert)
-- [@tonaljs/abc-notation](/packages/abc-notation): Parse ABC
-  notation notes
-
-#### Scales and chords
-
-- [@tonaljs/scale](/packages/scale): Scales
-- [@tonaljs/scale-type](/packages/scale-type): A dictionary of scales
-- [@tonaljs/chord](/packages/chord): Chords
-- [@tonaljs/chord-type](/packages/chord-type): A dictionary of chords
-- [@tonaljs/chord-detect](/packages/chord-detect): Detect chords from notes
-- [@tonaljs/pcset](/packages/pcset): Pitch class sets. Compare note groups.
-
-#### Voicings
-
-- [@tonaljs/voicing](/packages/voicing/): Voicings and voice leadings for chords
-- [@tonaljs/voice-leading](/packages/voice-leading/): Voice leading logic for transitions between voicings
-- [@tonaljs/voicing-dictionary](/packages/voicing-dictionary/): Collections of chord voicings
-
-#### Keys, chord progressions
-
-- [@tonaljs/key](/packages/key): Major and minor keys, it's scales and chords
-- [@tonaljs/mode](/packages/mode): A dictionary of Greek modes (ionian,
-  dorian...)
-- [@tonaljs/progression](/packages/progression): Chord progressions
-- [@tonaljs/roman-numeral](/packages/roman-numeral): Parse roman numeral symbols
-
-#### Time, rhythm
-
-- [@tonaljs/rhythm-pattern](/packages/rhythm-pattern): Generate and manipulate rhythmic patterns
-- [@tonaljs/time-signature](/packages/time-signature): Parse time signatures
-- [@tonaljs/duration-value](/packages/duration-value): Note duration values
-
-#### Utilities
-
-- [@tonaljs/core](/packages/core): Core functions (note, interval, transpose and
-  distance)
-- [@tonaljs/collection](/packages/collection): Utility functions to work with
-  collections (range, shuffle, permutations)
-- [@tonaljs/range](/packages/range): Create note ranges
-
-## Contributing
-
-Read [contributing document](/docs/CONTRIBUTING.md). To contribute open a PR and ensure:
-
-- If is a music theory change (like the name of a scale) link to reliable references.
-- If is a new feature, add documentation: changes to README of the affected module(s) are expected.
-- Ad tests: changes to the test.ts file of the affected module(s) are expected.
-- All tests are green
-
-## Inspiration
-
-This library takes inspiration from other music theory libraries:
-
-- Teoria: https://github.com/saebekassebil/teoria
-- Impro-Visor: https://www.cs.hmc.edu/~keller/jazz/improvisor/
-- MusicKit: https://github.com/benzguo/MusicKit
-- Music21: https://www.music21.org/music21docs/
-- Sharp11: https://github.com/jsrmath/sharp11
-- python-mingus: https://github.com/bspaans/python-mingus
-- Open Music Theory: https://viva.pressbooks.pub/openmusictheory/
-
-## Projects using tonal
-
-Showcase of projects that are using Tonal:
-
-- [Solfej](https://www.solfej.io/) by
-  [Shayan Javadi](https://github.com/ShayanJavadi)
-- [EarBeater](https://www.earbeater.com/online-ear-training/) by
-  [Morten Vestergaard](https://github.com/vellebelle)
-- [Sonid](https://sonid.app/)
-  ([play store](https://play.google.com/store/apps/details?id=org.stroopwafel.music.app),
-  [apple store](https://apps.apple.com/us/app/sonid/id1490221762?ls=1)) by
-  [martijnmichel](https://github.com/martijnmichel)
-- [Songcraft](https://songcraft.io/) by
-  [Gabe G'Sell](https://github.com/gabergg)
-- [React Guitar](https://react-guitar.com/) by
-  [4lejandrito](https://github.com/4lejandrito)
-- [Fretty.app](https://fretty.app/) by [tfeldmann](https://github.com/tfeldmann)
-- [Chordify](https://ashleymays.github.io/Chordify) by [ashleymays](https://github.com/ashleymays)
-- [Chordal](https://chordal.vercel.app) by [kad1kad](https://github.com/kad1kad)
-- [muted.io](https://muted.io/) by [thisisseb](https://github.com/thisisseb)
-- [Midi Sandbox](https://midisandbox.com/) by [jdlee022](https://github.com/jdlee022)
-- [music, eternal](https://eternal.rob.computer) by [kousun12](https://github.com/kousun12)
-- [Chromatone.center](https://chromatone.center) by [davay42](https://github.com/davay42)
-- [Super Oscillator](https://github.com/lukehorvat/super-oscillator) by [lukehorvat](https://github.com/lukehorvat)
-- [StringScales](https://stringscales.com/) by [Ambewas](https://github.com/ambewas)
-- [Polychron](https://github.com/PolychronMidi/Polychron) by [i1li](https://github.com/i1li)
-- [MusicTrainer](https://musictrainer.barnman.cc) by [zilongliu](https://github.com/Zilong-L)
-- [RiffScore](https://riffscore.netlify.app/) by [joekotvas](https://github.com/joekotvas/)
-
-Thank you all!
-
-Add your project here by
-[editing this file](https://github.com/tonaljs/tonal/edit/main/README.md)
+This README covers what the fork adds or changes. Everything else works as in
+Tonal, so the [Tonal documentation](https://tonaljs.github.io/tonal/docs)
+applies: read `tonal` as `@dmnerd/microtonal` and `@tonaljs/<module>` as
+`@dmnerd/microtonal/<module>` (see [Install](#install)). Inside this
+repository, packages keep their upstream `@tonaljs/*` names so that merging
+upstream stays simple; only `@dmnerd/microtonal` is published.
 
 ## License
 
-[MIT License](docs/LICENSE)
+[MIT License](docs/LICENSE). This fork is based on
+[Tonal](https://github.com/tonaljs/tonal), copyright (c) 2015 danigb and the
+Tonal contributors, and keeps its copyright and license notice.

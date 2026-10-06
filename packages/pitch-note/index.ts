@@ -106,7 +106,7 @@ export function tokenizeNote(str: string): NoteTokens {
     : ["", "", "", ""];
 }
 
-// ups and downs go before the note ("^C") or after the accidentals ("C↑")
+// ups and downs are written before the note ("↑C"); "C↑" is also read
 const UPS_REGEX = /^([\^v↑↓]*)([a-gA-G](?:#+|b+|x+)?)([↑↓]*)(?![#bx])(.*)$/;
 
 /**
@@ -148,8 +148,8 @@ function parse(fullName: NoteName): Note {
   const coord = coordinates({ step, alt, oct });
 
   const arrows = upsToArrows(ups);
-  const name = letter + acc + arrows + octStr;
-  const pc = letter + acc + arrows;
+  const name = arrows + letter + acc + octStr;
+  const pc = arrows + letter + acc;
   const chroma = mod(SEMI[step] + alt + ups, 12);
   const height =
     oct === undefined
@@ -179,10 +179,10 @@ function parse(fullName: NoteName): Note {
 function pitchName(props: Pitch): NoteName {
   const { step, alt, oct, ups = 0 } = props;
   const letter = stepToLetter(step);
-  if (!letter) {
+  if (!letter || !Number.isInteger(alt)) {
     return "";
   }
 
-  const pc = letter + altToAcc(alt) + upsToArrows(ups);
+  const pc = upsToArrows(ups) + letter + altToAcc(alt);
   return oct || oct === 0 ? pc + oct : pc;
 }

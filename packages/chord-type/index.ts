@@ -8,6 +8,7 @@ import {
 } from "@tonaljs/pcset";
 import { edoKey, edoOption, isEdo } from "@tonaljs/pitch";
 import { interval, intervalFromEdoSteps } from "@tonaljs/pitch-interval";
+import { accToAlt, arrowsToUps, upsToArrows } from "@tonaljs/pitch-note";
 import data from "./data";
 import microtonalData from "./microtonal-data";
 import ratioData from "./ratio-data";
@@ -36,6 +37,7 @@ let microtonal: ChordType[] = [];
 let index: Record<ChordTypeName, ChordType> = Object.create(null);
 let edoCache: Record<string, ChordType[]> = {};
 let tiers: Record<string, number> = Object.create(null);
+let byIntervals: Record<string, ChordType> = Object.create(null);
 let ratioChords: RatioChord[] = [];
 let ratioCache: Record<string, ChordType | undefined> = {};
 
@@ -61,6 +63,7 @@ export function get(
   return (
     (edo !== undefined ? ratioChordIn(String(type), edo) : undefined) ??
     index[type] ??
+    (typeof type === "string" ? kiteChord(type) : undefined) ??
     NoChordType
   );
 }
@@ -173,6 +176,138 @@ function ratioChordIn(name: string, edo: number): ChordType | undefined {
   return ratioCache[key];
 }
 
+// Kite's chord names: "↓7", "m↓7", "↓,M7(↓5)"
+const ARROWS = "(?:[↑^]+|[↓v]+)?";
+const NOTE = `,?(${ARROWS})(~?)(M|m|A|a|d|##?|bb?)?(\\d{1,2})|,?no(\\d{1,2})`;
+const GLOBAL_REGEX = new RegExp(`^(${ARROWS})(~?)(.*)$`);
+const NOTE_REGEX = new RegExp(`^(?:${NOTE})`);
+const ALTERED_REGEX = new RegExp(`^\\(((?:[ ,]?(?:${NOTE}))+)\\)$`);
+// only valid names are cached, so arbitrary input can't grow the cache
+let kiteCache: Record<string, ChordType> = Object.create(null);
+
+type KiteNote = { ups: number; mid: boolean; q: string; num: number };
+
+function kiteChord(symbol: string): ChordType | undefined {
+  const cached = kiteCache[symbol];
+  if (cached) return cached;
+  const chord = parseKite(symbol);
+  if (chord) kiteCache[symbol] = chord;
+  return chord;
+}
+
+function parseKite(symbol: string): ChordType | undefined {
+  const [, globalArrows, globalMid, rest] = GLOBAL_REGEX.exec(symbol)!;
+  const global = { ups: arrowsToUps(globalArrows), mid: globalMid === "~" };
+  // the longest known chord type that leaves a valid rest
+  for (let end = rest.length; end >= 0; end--) {
+    const head = rest.slice(0, end);
+    const tail = rest.slice(end);
+    const base = index[head];
+    if (!base || microtonal.includes(base) || !base.aliases.includes(head))
+      continue;
+    const intervals = kiteIntervals(base, global, tail);
+    if (intervals) {
+      const known = byIntervals[intervals.join(" ")];
+      if (known) return known;
+      const name =
+        upsToArrows(global.ups) +
+        globalMid +
+        head +
+        tail.replace(/\^/g, "↑").replace(/v/g, "↓");
+      return {
+        ...pcset(intervals),
+        name,
+        quality: getQuality(intervals),
+        intervals,
+        aliases: [name],
+      };
+    }
+  }
+  return undefined;
+}
+
+function kiteIntervals(
+  base: ChordType,
+  global: { ups: number; mid: boolean },
+  rest: string,
+): string[] | undefined {
+  let notes: KiteNote[] = base.intervals.map((name) => {
+    const i = interval(name);
+    return { ups: i.ups, mid: false, q: i.q, num: i.num };
+  });
+  if (global.ups || global.mid) {
+    const hasThird = notes.some((n) => simple(n.num) === 3);
+    const affected = notes.filter(
+      (n) =>
+        [3, 6, 7].includes(simple(n.num)) ||
+        n.num === 11 ||
+        (!hasThird && n.num < 8 && [2, 4].includes(n.num)),
+    );
+    // a global arrow needs a note to change (no "C↓5")
+    if (!affected.length) return undefined;
+    affected.forEach((n) => {
+      n.ups += global.ups;
+      n.mid = n.mid || global.mid;
+    });
+  }
+  let m: RegExpExecArray | null;
+  while ((m = NOTE_REGEX.exec(rest)) && m[0]) {
+    if (m[5]) notes = notes.filter((n) => simple(n.num) !== simple(+m![5]));
+    else notes.push(kiteNote(m));
+    rest = rest.slice(m[0].length);
+  }
+  if (rest) {
+    const altered = ALTERED_REGEX.exec(rest);
+    if (!altered) return undefined;
+    let list = altered[1].replace(/ /g, ",");
+    while ((m = NOTE_REGEX.exec(list)) && m[0]) {
+      list = list.slice(m[0].length);
+      if (m[5]) return undefined;
+      const change = kiteNote(m, true);
+      const same =
+        notes.find((n) => n.num === change.num) ??
+        notes.find((n) => simple(n.num) === simple(change.num));
+      if (same) {
+        same.ups += change.ups;
+        same.mid = change.mid || (same.mid && !change.q);
+        if (change.q) same.q = change.q;
+      } else {
+        // a 2nd or 4th replaces the 3rd, as in a suspended chord
+        if ([2, 4].includes(change.num))
+          notes = notes.filter((n) => simple(n.num) !== 3);
+        notes.push(change);
+      }
+    }
+  }
+  notes.sort((a, b) => a.num - b.num);
+  const names = notes.map(
+    (n) => interval(upsToArrows(n.ups) + n.num + (n.mid ? "~" : n.q)).name,
+  );
+  const valid = names.every((n) => n) && new Set(names).size === names.length;
+  return valid ? names : undefined;
+}
+
+const simple = (num: number) => ((num - 1) % 7) + 1;
+
+// an accidental is relative to the major scale; a 7th alone is minor
+function kiteNote(m: RegExpExecArray, altering = false): KiteNote {
+  const num = +m[4];
+  const spec = m[3] ?? "";
+  const step = (num - 1) % 7;
+  const q = /^[MmAd]$/.test(spec)
+    ? spec
+    : spec === "a"
+      ? "A"
+      : spec
+        ? interval({ step, alt: accToAlt(spec), oct: 0, dir: 1 }).q
+        : altering
+          ? ""
+          : step === 6
+            ? "m"
+            : interval(String(num)).q;
+  return { ups: arrowsToUps(m[1]), mid: m[2] === "~", q, num };
+}
+
 /**
  * Clear the dictionary
  */
@@ -184,6 +319,8 @@ export function removeAll() {
   edoCache = {};
   ratioCache = {};
   tiers = Object.create(null);
+  byIntervals = Object.create(null);
+  kiteCache = Object.create(null);
 }
 
 /**
@@ -214,10 +351,15 @@ export function add(intervals: string[], aliases: string[], fullName?: string) {
     aliases,
   };
   edoCache = {};
+  kiteCache = Object.create(null);
+  byIntervals[intervals.join(" ")] ??= chord;
   if (chord.name) {
     index[chord.name] = chord;
   }
-  const hasUps = intervals.some((ivl) => interval(ivl).ups);
+  const hasUps = intervals.some((ivl) => {
+    const i = interval(ivl);
+    return i.ups || i.q === "~";
+  });
   if (hasUps) {
     microtonal.push(chord);
   } else {

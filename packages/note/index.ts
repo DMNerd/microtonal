@@ -245,7 +245,7 @@ export function fromEdoSteps(
   const chroma = ((steps % edo) + edo) % edo;
   const pc = options.accidental
     ? edoNames(edo, options.accidental)[chroma]
-    : _tr("C", edoIntervalNames(edo)[chroma]);
+    : _tr("C", edoIntervalNames(edo)[chroma], edo);
   if (options.pitchClass) return pc;
   const n0 = props(pc + "0");
   const oct = (steps - pitchEdoSteps(n0, edo)) / edo;
@@ -266,7 +266,7 @@ export function transposeEdoSteps(
   if (n.empty || !Number.isInteger(steps) || !isEdo(edo)) return "";
   const pitchClass = n.oct === undefined;
   const target = pitchEdoSteps(n, edo) + steps;
-  const result = get(_tr(n.name, intervalFromEdoSteps(steps, edo)));
+  const result = get(_tr(n.name, intervalFromEdoSteps(steps, edo), edo));
   const expected = pitchClass ? ((target % edo) + edo) % edo : target;
   if (!result.empty && pitchEdoSteps(result, edo) === expected) {
     return result.name;

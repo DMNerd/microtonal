@@ -104,6 +104,12 @@ const FIFTHS_TO_STEPS = [3, 0, 4, 1, 5, 2, 6];
  */
 export function pitch(coord: PitchCoordinates): Pitch {
   const [f, o, dir] = coord;
+  // half a sharp off a quality: a mid interval
+  if (!Number.isInteger(f)) {
+    const p =
+      o === undefined ? pitch([f + 3.5]) : pitch([f + 3.5, o - 2, dir!]);
+    return { ...p, alt: p.alt - 0.5, dir };
+  }
   const step = FIFTHS_TO_STEPS[unaltered(f)];
   const alt = Math.floor((f + 1) / 7);
   if (o === undefined) {
@@ -295,6 +301,7 @@ export function edoSteps(pitch: Pitch, edo = 12): number {
   } else {
     steps = f * edoProfile(edo).fifth + o * edo + ups;
   }
+  if (!Number.isInteger(steps)) return NaN;
   return pitch.oct === undefined ? mod(steps, edo) : steps;
 }
 

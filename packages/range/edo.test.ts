@@ -5,16 +5,16 @@ describe("chromatic in an EDO", () => {
   test("24-EDO quarter tones", () => {
     expect(Range.chromatic(["C4", "D4"], { edo: 24 })).toEqual([
       "C4",
-      "Db↓4",
+      "↓Db4",
       "Db4",
-      "D↓4",
+      "↓D4",
       "D4",
     ]);
     expect(Range.chromatic(["C4", "D4"], { edo: 24, sharps: true })).toEqual([
       "C4",
-      "C↑4",
+      "↑C4",
       "C#4",
-      "C#↑4",
+      "↑C#4",
       "D4",
     ]);
   });
@@ -38,7 +38,7 @@ describe("chromatic in an EDO", () => {
   test("numbers are EDO steps", () => {
     expect(Range.chromatic([96, 98], { edo: 24, sharps: true })).toEqual([
       "C4",
-      "C↑4",
+      "↑C4",
       "C#4",
     ]);
   });

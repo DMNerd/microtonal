@@ -16,7 +16,7 @@ describe("chord types in other EDOs", () => {
     const downmajor = ChordType.get("downmajor");
     expect(downmajor.intervals).toEqual(["1P", "↓3M", "5P"]);
     expect(downmajor.quality).toBe("Major");
-    expect(ChordType.get("(↓3)")).toBe(downmajor);
+    expect(ChordType.get("↓")).toBe(downmajor);
     expect(ChordType.get("n")).toBe(downmajor);
     expect(ChordType.allMicrotonal().length).toBeGreaterThan(5);
   });
@@ -37,15 +37,16 @@ describe("chord types in other EDOs", () => {
 
   test("forEdo(24) adds the distinct microtonal chords", () => {
     const types = ChordType.forEdo(24);
-    const downmajor = find(types, "downmajor");
-    expect(downmajor?.chroma).toBe("100000010000001000000000");
-    expect(downmajor?.edo).toBe(24);
-    expect(downmajor?.intervals).toEqual(["1P", "↓3M", "5P"]);
-    // in 24-EDO upminor is the same set as downmajor: the first one wins
+    const mid = find(types, "mid");
+    expect(mid?.chroma).toBe("100000010000001000000000");
+    expect(mid?.edo).toBe(24);
+    expect(mid?.intervals).toEqual(["1P", "3~", "5P"]);
+    // in 24-EDO downmajor and upminor are the mid chord: the first one wins
+    expect(find(types, "downmajor")).toBeUndefined();
     expect(find(types, "upminor")).toBeUndefined();
     expect(find(types, "upmajor")?.chroma).toBe("100000000100001000000000");
     // no duplicated chromas among the microtonal chords
-    const micro = types.filter((t) => t.intervals.some((i) => /[↑↓]/.test(i)));
+    const micro = types.filter((t) => t.intervals.some((i) => /[↑↓~]/.test(i)));
     expect(new Set(micro.map((t) => t.chroma)).size).toBe(micro.length);
   });
 
@@ -63,7 +64,7 @@ describe("chord types in other EDOs", () => {
     });
     test("add clears the forEdo cache", () => {
       expect(ChordType.forEdo(24)).toEqual([]);
-      ChordType.add(["1P", "↓3M", "5P"], ["(↓3)"], "downmajor");
+      ChordType.add(["1P", "↓3M", "5P"], ["↓"], "downmajor");
       expect(ChordType.all()).toEqual([]);
       expect(ChordType.forEdo(24)).toHaveLength(1);
       ChordType.removeAll();

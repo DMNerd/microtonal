@@ -95,10 +95,10 @@ function fromPitch(pitch: Pitch): RomanNumeral | NoRomanNumeral {
   );
 }
 
-// "v" is not a down here: it would clash with the numerals v, vi and vii
-const UPS_REGEX = /^([↑↓^]*)(.*)$/;
+// "v" is a down only before an upper case numeral ("vVI"), not the numeral v
+const UPS_REGEX = /^((?:[↑↓^]|v(?=[v↑↓^]*[#bx]*[IV]))*)(.*)$/;
 const REGEX =
-  /^(#{1,}|b{1,}|x{1,}|)(IV|I{1,3}|VI{0,2}|iv|i{1,3}|vi{0,2})([^IViv]*)$/;
+  /^(#{1,}|b{1,}|x{1,}|)(IV|I{1,3}|VI{0,2}|iv|i{1,3}|vi{0,2})((?:v|[^IViv])[^IViv]*|)$/;
 
 // [name, accidentals, romanNumeral, chordType]
 type RomanNumeralTokens = [string, string, string, string];

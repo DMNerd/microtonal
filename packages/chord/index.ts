@@ -5,6 +5,7 @@ import {
   get as getChordType,
 } from "@tonaljs/chord-type";
 import { add, subtract } from "@tonaljs/interval";
+import { edoOption } from "@tonaljs/pitch";
 import { isSubsetOf, isSupersetOf } from "@tonaljs/pcset";
 import {
   distance,
@@ -12,6 +13,7 @@ import {
   transpose as transposeNote,
 } from "@tonaljs/pitch-distance";
 import {
+  arrowsToUps,
   NoteName,
   note,
   tokenizeNote,
@@ -80,15 +82,16 @@ const NoChord: Chord = {
  * tokenize("Cnonsense") // => [ null, "nonsense" ]
  */
 export function tokenize(name: string): ChordNameTokens {
-  // ups and downs right after the root belong to it: "E↓m" is E↓ minor
-  const [ups, plainName] = tokenizeUps(name);
-  const [letter, acc, oct, type] = tokenizeNote(plainName);
+  // only arrows before the root belong to it: "E↓m" is E downminor
+  const [, arrows, rest] = /^([\^v↑↓]*)([\s\S]*)$/.exec(`${name}`) as string[];
+  const [letter, acc, oct, type] = tokenizeNote(rest);
   if (letter === "") {
     return tokenizeBass("", name);
-  } else if (letter === "A" && type === "ug" && !ups) {
+  } else if (letter === "A" && type === "ug" && !arrows) {
     return tokenizeBass("", "aug");
   } else {
-    return tokenizeBass(letter + acc + upsToArrows(ups), oct + type);
+    const root = upsToArrows(arrowsToUps(arrows)) + letter + acc;
+    return tokenizeBass(root, oct + type);
   }
 }
 
@@ -101,7 +104,7 @@ function tokenizeBass(note: string, chord: string): ChordNameTokens {
   const [letter, acc, oct, type] = tokenizeNote(plainBass);
   // Only a pitch class is accepted as bass note
   if (letter !== "" && oct === "" && type === "") {
-    return [note, split[0], letter + acc + upsToArrows(ups)];
+    return [note, split[0], upsToArrows(ups) + letter + acc];
   } else {
     return [note, chord, ""];
   }
@@ -173,7 +176,7 @@ export function getChord(
 
   const notes = tonic.empty
     ? []
-    : intervals.map((i) => transposeNote(tonic.pc, i));
+    : intervals.map((i) => transposeNote(tonic.pc, i, edoOption(options)));
 
   typeName = type.aliases.indexOf(typeName) !== -1 ? typeName : type.aliases[0];
   const symbol = `${tonic.empty ? "" : tonic.pc}${typeName}${

@@ -185,7 +185,8 @@ function chromaToIntervals(chroma: PcsetChroma): IntervalName[] {
 }
 
 export function notes(set: Set): NoteName[] {
-  return get(set).intervals.map((ivl) => transpose("C", ivl));
+  const pcs = get(set);
+  return pcs.intervals.map((ivl) => transpose("C", ivl, pcs.edo));
 }
 
 /**

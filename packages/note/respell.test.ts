@@ -14,16 +14,16 @@ describe("simplify in an EDO", () => {
     expect(Note.simplify("E#", { edo: 19 })).toBe("E#");
     expect(Note.simplify("B#3", { edo: 19 })).toBe("B#3");
     // 31-EDO: a double sharp is simplest with an up
-    expect(Note.simplify("C##4", { edo: 31 })).toBe("Db↑4");
+    expect(Note.simplify("C##4", { edo: 31 })).toBe("↑Db4");
     // ups and downs are part of the pitch
-    expect(Note.simplify("C#↑", { edo: 24 })).toBe("C#↑");
-    expect(Note.simplify("Db↑", { edo: 24 })).toBe("D↓");
-    expect(Note.simplify("C↑", { edo: 12 })).toBe("C#");
+    expect(Note.simplify("↑C#", { edo: 24 })).toBe("↑C#");
+    expect(Note.simplify("↑Db", { edo: 24 })).toBe("↓D");
+    expect(Note.simplify("↑C", { edo: 12 })).toBe("C#");
   });
 
   test("keeps the accidental direction", () => {
     expect(Note.simplify("Ebb", { edo: 24 })).toBe("D");
-    expect(Note.simplify("Fb↓", { edo: 24 })).toBe("E↓");
+    expect(Note.simplify("↓Fb", { edo: 24 })).toBe("↓E");
   });
 
   test("is safe as a map callback", () => {
@@ -42,8 +42,8 @@ describe("enharmonic in an EDO", () => {
   });
 
   test("the other spelling of the same step", () => {
-    expect(Note.enharmonic("C#↑", undefined, { edo: 24 })).toBe("D↓");
-    expect(Note.enharmonic("D↓", undefined, { edo: 24 })).toBe("C#↑");
+    expect(Note.enharmonic("↑C#", undefined, { edo: 24 })).toBe("↓D");
+    expect(Note.enharmonic("↓D", undefined, { edo: 24 })).toBe("↑C#");
     // 19-EDO: E# and Fb are the same step
     expect(Note.enharmonic("E#4", undefined, { edo: 19 })).toBe("Fb4");
     expect(Note.enharmonic("C#", undefined, { edo: 19 })).toBe("C#");
@@ -55,7 +55,7 @@ describe("enharmonic in an EDO", () => {
     expect(Note.enharmonic("C##", "Db", { edo: 19 })).toBe("Db");
     // the octave follows the pitch: B#3 is step 18 of octave 3 in 19-EDO
     expect(Note.enharmonic("B#3", "Cb", { edo: 19 })).toBe("Cb4");
-    expect(Note.enharmonic("C#↑4", "D↓", { edo: 24 })).toBe("D↓4");
-    expect(Note.enharmonic("C#↑4", "D", { edo: 24 })).toBe("");
+    expect(Note.enharmonic("↑C#4", "↓D", { edo: 24 })).toBe("↓D4");
+    expect(Note.enharmonic("↑C#4", "D", { edo: 24 })).toBe("");
   });
 });

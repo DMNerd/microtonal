@@ -5,7 +5,7 @@ const Q24 = { edo: 24 };
 
 describe("pcset in other EDOs", () => {
   test("from note and interval lists", () => {
-    const neutral = Pcset.get(["C", "E↓", "G"], Q24);
+    const neutral = Pcset.get(["C", "↓E", "G"], Q24);
     expect(neutral.chroma).toBe("100000010000001000000000");
     expect(neutral.edo).toBe(24);
     expect(neutral.empty).toBe(false);
@@ -27,7 +27,7 @@ describe("pcset in other EDOs", () => {
 
   test("set numbers", () => {
     expect(Pcset.get(2 ** 23, Q24).chroma).toBe("1" + "0".repeat(23));
-    expect(Pcset.num(["C", "E↓", "G"], Q24)).toBe(
+    expect(Pcset.num(["C", "↓E", "G"], Q24)).toBe(
       parseInt("100000010000001000000000", 2),
     );
   });
@@ -41,8 +41,8 @@ describe("pcset in other EDOs", () => {
   test("normalized", () => {
     // the smallest rotation starting on a pitch class
     const normalized = "100000000010000001000000";
-    expect(Pcset.get(["C", "E↓", "G"], Q24).normalized).toBe(normalized);
-    expect(Pcset.get(["G", "B↓", "D"], Q24).normalized).toBe(normalized);
+    expect(Pcset.get(["C", "↓E", "G"], Q24).normalized).toBe(normalized);
+    expect(Pcset.get(["G", "↓B", "D"], Q24).normalized).toBe(normalized);
     expect(Pcset.get([], Q24).normalized).toBe("0".repeat(24));
   });
 
@@ -83,17 +83,17 @@ describe("pcset in other EDOs", () => {
       "1P 1A 2m 2M 2A 3m 3M 3A 4P 4A 5d 5P 5A 6m 6M 6A 7m 7M 7A".split(" "),
     );
     const names24 = edoIntervalNames(24);
-    expect(names24[1]).toBe("↑1P");
-    expect(names24[7]).toBe("↑3m");
+    expect(names24[1]).toBe("↑1");
+    expect(names24[7]).toBe("3~");
     expect(names24[8]).toBe("3M");
     expect(names24[14]).toBe("5P");
-    expect(Pcset.intervals(["C", "E↓", "G"], Q24)).toEqual(["1P", "↑3m", "5P"]);
+    expect(Pcset.intervals(["C", "↓E", "G"], Q24)).toEqual(["1P", "3~", "5P"]);
   });
 
   test("interval names prefer plain qualities with ups and downs", () => {
-    // as the Xenharmonic Wiki tables write them (^M2, vm3... not 3d, 2A)
+    // as the Xenharmonic Wiki tables write them (^M2, vm3, ~3... not 3d, 2A)
     expect(edoIntervalNames(31).slice(0, 13)).toEqual(
-      "1P ↑1P ↓2m 2m ↑2m 2M ↑2M ↓3m 3m ↑3m 3M ↑3M ↓4P".split(" "),
+      "1P ↑1 ↓2m 2m 2~ 2M ↑2M ↓3m 3m 3~ 3M ↑3M ↓4".split(" "),
     );
     expect(edoIntervalNames(22).slice(0, 13)).toEqual(
       "1P 2m ↑2m ↓2M 2M 3m ↑3m ↓3M 3M 4P 5d ↑5d 4A".split(" "),
@@ -105,7 +105,7 @@ describe("pcset in other EDOs", () => {
       "1P 1A 2m 2M 2A".split(" "),
     );
     // the step below the octave
-    expect(edoIntervalNames(41)[40]).toBe("↓8P");
+    expect(edoIntervalNames(41)[40]).toBe("↓8");
   });
 
   test("interval names where a sharp lowers the pitch or does nothing", () => {
@@ -117,9 +117,10 @@ describe("pcset in other EDOs", () => {
     expect(edoIntervalNames(13).slice(0, 7)).toEqual(
       "1P 2M 3M ↑3M ↓3m 3m 4P".split(" "),
     );
-    // 28-EDO: a sharp is 0 steps, so only ups and downs move a pitch
+    // 28-EDO: a sharp is 0 steps, so only ups and downs move a pitch and
+    // intervals have no quality
     expect(edoIntervalNames(28).slice(0, 5)).toEqual(
-      "1P ↑1P ↑↑1P ↓2m 2m".split(" "),
+      "1 ↑1 ↑↑1 ↓2 2".split(" "),
     );
   });
 
@@ -127,7 +128,7 @@ describe("pcset in other EDOs", () => {
     // 41-EDO: 7A is a step above the octave, and plain qualities with ups
     // read better than 1A (as the Xenharmonic Wiki writes them)
     expect(edoIntervalNames(41).slice(0, 8)).toEqual(
-      "1P ↑1P ↓2m 2m ↑2m ↑↑2m ↓2M 2M".split(" "),
+      "1P ↑1 ↓2m 2m ↑2m 2~ ↓2M 2M".split(" "),
     );
     // 53-EDO: 4:5:6:7 is 1P ↓3M 5P ↓7m
     const names53 = edoIntervalNames(53);
@@ -137,34 +138,34 @@ describe("pcset in other EDOs", () => {
   });
 
   test("notes", () => {
-    expect(Pcset.notes(Pcset.get(["C", "E↓", "G"], Q24))).toEqual([
+    expect(Pcset.notes(Pcset.get(["C", "↓E", "G"], Q24))).toEqual([
       "C",
-      "Eb↑",
+      "↑Eb",
       "G",
     ]);
   });
 
   test("equality and subsets", () => {
-    expect(Pcset.isEqual(["C", "E↓"], ["C", "Eb↑"], Q24)).toBe(true);
-    expect(Pcset.isEqual(["C", "E↓"], ["C", "Eb↑"])).toBe(false);
-    const inNeutral = Pcset.isSubsetOf(Pcset.get(["C", "E↓", "G"], Q24));
-    expect(inNeutral(["C", "E↓"])).toBe(true);
+    expect(Pcset.isEqual(["C", "↓E"], ["C", "↑Eb"], Q24)).toBe(true);
+    expect(Pcset.isEqual(["C", "↓E"], ["C", "↑Eb"])).toBe(false);
+    const inNeutral = Pcset.isSubsetOf(Pcset.get(["C", "↓E", "G"], Q24));
+    expect(inNeutral(["C", "↓E"])).toBe(true);
     expect(inNeutral(["C", "E"])).toBe(false);
-    const extendsNeutral = Pcset.isSupersetOf(Pcset.get(["C", "E↓"], Q24));
-    expect(extendsNeutral(["C", "E↓", "G"])).toBe(true);
+    const extendsNeutral = Pcset.isSupersetOf(Pcset.get(["C", "↓E"], Q24));
+    expect(extendsNeutral(["C", "↓E", "G"])).toBe(true);
     expect(extendsNeutral(["C", "E", "G"])).toBe(false);
   });
 
   test("isNoteIncludedIn and filter", () => {
-    const inNeutral = Pcset.isNoteIncludedIn(Pcset.get(["C", "E↓", "G"], Q24));
-    expect(inNeutral("Eb↑4")).toBe(true);
+    const inNeutral = Pcset.isNoteIncludedIn(Pcset.get(["C", "↓E", "G"], Q24));
+    expect(inNeutral("↑Eb4")).toBe(true);
     expect(inNeutral("E4")).toBe(false);
     expect(
-      Pcset.filter(Pcset.get(["C", "E↓", "G"], Q24))(["C4", "E4", "E↓4"]),
-    ).toEqual(["C4", "E↓4"]);
+      Pcset.filter(Pcset.get(["C", "↓E", "G"], Q24))(["C4", "E4", "↓E4"]),
+    ).toEqual(["C4", "↓E4"]);
   });
 
   test("modes", () => {
-    expect(Pcset.modes(Pcset.get(["C", "E↓", "G"], Q24))).toHaveLength(3);
+    expect(Pcset.modes(Pcset.get(["C", "↓E", "G"], Q24))).toHaveLength(3);
   });
 });

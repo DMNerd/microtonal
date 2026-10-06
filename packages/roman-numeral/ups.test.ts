@@ -12,6 +12,16 @@ describe("roman numerals with ups and downs", () => {
     // "v" is a numeral, not a down
     expect(RomanNumeral.get("vii").step).toBe(6);
     expect(RomanNumeral.get("vii").ups).toBe(0);
+    expect(RomanNumeral.get("v").step).toBe(4);
+  });
+
+  test("Kite's ASCII down before an upper case numeral", () => {
+    expect(RomanNumeral.get("vVI").name).toBe("↓VI");
+    expect(RomanNumeral.get("vvbVII").ups).toBe(-2);
+    expect(RomanNumeral.get("vV").step).toBe(4);
+    // a chord type after the numeral may start with "v" (I downmajor)
+    expect(RomanNumeral.get("Iv").chordType).toBe("v");
+    expect(RomanNumeral.get("IVv").roman).toBe("IV");
   });
 
   test("from pitches and intervals", () => {

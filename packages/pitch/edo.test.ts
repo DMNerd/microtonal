@@ -37,4 +37,11 @@ describe("edo", () => {
     // descending up-major-third: -(8 + 1) in 24-EDO
     expect(edoSteps({ step: 2, alt: 0, oct: 0, dir: -1, ups: 1 }, 24)).toBe(-9);
   });
+
+  test("a mid is half a sharp off a quality", () => {
+    // mid 3rd: 7 steps in 24-EDO, 12 in 41-EDO, none where a sharp is odd
+    expect(edoSteps({ step: 2, alt: -0.5, oct: 0, dir: 1 }, 24)).toBe(7);
+    expect(edoSteps({ step: 2, alt: -0.5, oct: 0, dir: 1 }, 41)).toBe(12);
+    expect(edoSteps({ step: 2, alt: -0.5, oct: 0, dir: 1 }, 22)).toBeNaN();
+  });
 });

@@ -75,7 +75,7 @@ describe("@tonaljs/abc-notation", () => {
 
 describe("ups and downs", () => {
   test("have no ABC notation", () => {
-    expect(AbcNotation.scientificToAbcNotation("E↓4")).toBe("");
+    expect(AbcNotation.scientificToAbcNotation("↓E4")).toBe("");
     expect(AbcNotation.scientificToAbcNotation("E4")).toBe("E");
   });
 });

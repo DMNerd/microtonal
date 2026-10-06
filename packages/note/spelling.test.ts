@@ -16,7 +16,7 @@ describe("edoNames", () => {
   test("24-EDO sharp view", () => {
     expect(Note.edoNames(24, "sharp")).toEqual(
       $(
-        "C C↑ C# C#↑ D D↑ D# D#↑ E E↑ F F↑ F# F#↑ G G↑ G# G#↑ A A↑ A# A#↑ B B↑",
+        "C ↑C C# ↑C# D ↑D D# ↑D# E ↑E F ↑F F# ↑F# G ↑G G# ↑G# A ↑A A# ↑A# B ↑B",
       ),
     );
   });
@@ -24,7 +24,7 @@ describe("edoNames", () => {
   test("24-EDO flat view: downs from the note above", () => {
     expect(Note.edoNames(24, "flat")).toEqual(
       $(
-        "C Db↓ Db D↓ D Eb↓ Eb E↓ E F↓ F Gb↓ Gb G↓ G Ab↓ Ab A↓ A Bb↓ Bb B↓ B C↓",
+        "C ↓Db Db ↓D D ↓Eb Eb ↓E E ↓F F ↓Gb Gb ↓G G ↓Ab Ab ↓A A ↓Bb Bb ↓B B ↓C",
       ),
     );
   });
@@ -40,25 +40,25 @@ describe("edoNames", () => {
 
   test("31-EDO: ups instead of double accidentals", () => {
     expect(Note.edoNames(31, "sharp").slice(0, 6)).toEqual(
-      $("C C↑ C# Db Db↑ D"),
+      $("C ↑C C# Db ↑Db D"),
     );
   });
 
   test("17- and 22-EDO avoid E#, B#, Cb and Fb when they can", () => {
     expect(Note.edoNames(17, "sharp").slice(0, 4)).toEqual($("C Db C# D"));
     // 22-EDO: B# is above C, so step 2 takes an up or a down instead
-    expect(Note.edoNames(22, "sharp").slice(0, 4)).toEqual($("C Db Db↑ C#"));
-    expect(Note.edoNames(22, "flat").slice(0, 4)).toEqual($("C Db C#↓ C#"));
+    expect(Note.edoNames(22, "sharp").slice(0, 4)).toEqual($("C Db ↑Db C#"));
+    expect(Note.edoNames(22, "flat").slice(0, 4)).toEqual($("C Db ↓C# C#"));
   });
 
   test("spellings don't cross a neighbouring natural", () => {
     // 41-EDO: B# is a step above C, Ebb a step below D
     expect(Note.edoNames(41, "sharp").slice(0, 8)).toEqual(
-      $("C C↑ Db↓ Db C# C#↑ D↓ D"),
+      $("C ↑C ↓Db Db C# ↑C# ↓D D"),
     );
-    // 53-EDO: the 5/4 third is E↓ (Fb is below E), the 7/4 seventh Bb↓
-    expect(Note.edoNames(53, "sharp")[17]).toBe("E↓");
-    expect(Note.edoNames(53, "flat")[43]).toBe("Bb↓");
+    // 53-EDO: the 5/4 third is ↓E (Fb is below E), the 7/4 seventh ↓Bb
+    expect(Note.edoNames(53, "sharp")[17]).toBe("↓E");
+    expect(Note.edoNames(53, "flat")[43]).toBe("↓Bb");
     // 19-EDO: E# lies between E and F, so it stays
     expect(Note.edoNames(19, "sharp")[7]).toBe("E#");
   });
@@ -84,11 +84,11 @@ describe("edoNames", () => {
 
 describe("fromEdoSteps with an accidental preference", () => {
   test("uses edoNames and keeps octaves", () => {
-    expect(Note.fromEdoSteps(103, 24, { accidental: "sharp" })).toBe("D#↑4");
-    expect(Note.fromEdoSteps(103, 24, { accidental: "flat" })).toBe("E↓4");
+    expect(Note.fromEdoSteps(103, 24, { accidental: "sharp" })).toBe("↑D#4");
+    expect(Note.fromEdoSteps(103, 24, { accidental: "flat" })).toBe("↓E4");
     expect(
       Note.fromEdoSteps(7, 24, { accidental: "flat", pitchClass: true }),
-    ).toBe("E↓");
+    ).toBe("↓E");
     // 19-EDO B#0 is step 18, not C1
     expect(Note.fromEdoSteps(18, 19, { accidental: "sharp" })).toBe("B#0");
     expect(Note.fromEdoSteps(18, 19, { accidental: "flat" })).toBe("Cb1");
@@ -103,22 +103,22 @@ describe("fromEdoSteps with an accidental preference", () => {
   });
 
   test("without a preference nothing changes", () => {
-    expect(Note.fromEdoSteps(103, 24)).toBe("Eb↑4");
+    expect(Note.fromEdoSteps(103, 24)).toBe("↑Eb4");
   });
 });
 
 describe("transposeEdoSteps", () => {
   test("keeps the letter where it can", () => {
-    expect(Note.transposeEdoSteps("C4", 7, 24)).toBe("Eb↑4");
-    expect(Note.transposeEdoSteps("C#", 1, 24)).toBe("C#↑");
-    expect(Note.transposeEdoSteps("E4", -1, 24)).toBe("E↓4");
+    expect(Note.transposeEdoSteps("C4", 7, 24)).toBe("↑Eb4");
+    expect(Note.transposeEdoSteps("C#", 1, 24)).toBe("↑C#");
+    expect(Note.transposeEdoSteps("E4", -1, 24)).toBe("↓E4");
     expect(Note.transposeEdoSteps("Bb3", 3, 19)).toBe("C4");
     expect(Note.transposeEdoSteps("X", 1, 24)).toBe("");
   });
 
   test("lands on the right step in every EDO", () => {
     for (let edo = 5; edo <= 72; edo++) {
-      for (const note of ["C4", "F#4", "Bb↓3", "E", "Db↑"]) {
+      for (const note of ["C4", "F#4", "↓Bb3", "E", "↑Db"]) {
         const base = Note.edoSteps(note, edo);
         for (let steps = -edo; steps <= edo; steps++) {
           const target = note.match(/\d/)
@@ -136,14 +136,14 @@ describe("transposeEdoSteps", () => {
 
 describe("edoMidi", () => {
   test("midi number and pitch bend of an EDO note", () => {
-    expect(Note.edoMidi("E↓4", 24)).toEqual({
+    expect(Note.edoMidi("↓E4", 24)).toEqual({
       midi: 64,
       cents: -50,
       bend: 6144,
     });
-    expect(Note.edoMidi("E↓4", 24, { bendRange: 12 })?.bend).toBe(7851);
+    expect(Note.edoMidi("↓E4", 24, { bendRange: 12 })?.bend).toBe(7851);
     expect(Note.edoMidi("A4", 31)).toEqual({ midi: 69, cents: 0, bend: 8192 });
-    expect(Note.edoMidi("C↑4", 31)?.cents).toBe(48.39);
+    expect(Note.edoMidi("↑C4", 31)?.cents).toBe(48.39);
   });
 
   test("null for pitch classes and invalid notes", () => {

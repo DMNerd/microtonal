@@ -4,6 +4,7 @@ import {
   IntervalName,
   interval as asInterval,
   coordToInterval,
+  edoPlainInterval,
 } from "@tonaljs/pitch-interval";
 import {
   NoteLiteral,
@@ -22,16 +23,18 @@ import {
  * import { transpose } from "@tonaljs/core"
  * transpose("d3", "3M") // => "F#3"
  * transpose("D", "3M") // => "F#"
+ * transpose("C", "3~", 24) // => "↑Eb" (a mid needs an EDO)
  * ["C", "D", "E", "F", "G"].map(pc => transpose(pc, "M3)) // => ["E", "F#", "G#", "A", "B"]
  */
 export function transpose(
   noteName: NoteLiteral,
   intervalName: IntervalLiteral | [number, number],
+  edo?: number,
 ): NoteName {
   const note = asNote(noteName);
   const ivl = Array.isArray(intervalName)
     ? undefined
-    : asInterval(intervalName);
+    : asInterval(edoPlainInterval(asInterval(intervalName).name, edo));
   const intervalCoord = ivl ? ivl.coord : (intervalName as [number, number]);
   if (note.empty || !intervalCoord || intervalCoord.length < 2) {
     return "";

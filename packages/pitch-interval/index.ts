@@ -21,7 +21,18 @@ export type IntervalName = string;
 export type IntervalLiteral = IntervalName | Pitch | NamedPitch;
 
 type Quality =
-  "dddd" | "ddd" | "dd" | "d" | "m" | "M" | "P" | "A" | "AA" | "AAA" | "AAAA";
+  | "dddd"
+  | "ddd"
+  | "dd"
+  | "d"
+  | "m"
+  | "~"
+  | "M"
+  | "P"
+  | "A"
+  | "AA"
+  | "AAA"
+  | "AAAA";
 type Type = "perfectable" | "majorable";
 
 export interface Interval extends Pitch, NamedPitch {
@@ -61,9 +72,10 @@ const NoInterval: Interval = Object.freeze({
 });
 
 // shorthand tonal notation (with quality after number)
-const INTERVAL_TONAL_REGEX = "([-+]?\\d+)(d{1,4}|m|M|P|A{1,4})";
+// the quality can be left out ("3"), as in EDOs where a sharp is 0 steps
+const INTERVAL_TONAL_REGEX = "([-+]?\\d+)(d{1,4}|m|~|M|P|A{1,4}|)";
 // standard shorthand notation (with quality before number)
-const INTERVAL_SHORTHAND_REGEX = "(AA|A|P|M|m|d|dd)([-+]?\\d+)";
+const INTERVAL_SHORTHAND_REGEX = "(AA|A|P|M|m|~|d|dd)([-+]?\\d+)";
 const REGEX = new RegExp(
   "^(?:" + INTERVAL_TONAL_REGEX + "|" + INTERVAL_SHORTHAND_REGEX + ")$",
 );
@@ -73,6 +85,9 @@ type IntervalTokens = [string, string];
 const UPS_REGEX = /^([-+]?)([\^v↑↓]+)(.*)$/;
 
 const fillStr = (s: string, n: number) => Array(Math.abs(n) + 1).join(s);
+// a perfect interval with ups or downs is written without its quality ("↑4")
+const ivlName = (ups: number, num: number | string, q: string) =>
+  upsToArrows(ups) + num + (ups && q === "P" ? "" : q);
 const upsToArrows = (ups: number): string =>
   ups < 0 ? fillStr("↓", -ups) : fillStr("↑", ups);
 const arrowsToUps = (arrows: string): number => {
@@ -157,18 +172,22 @@ function parse(fullStr?: string): Interval {
   if (num === 0) {
     return NoInterval;
   }
-  const q = tokens[1] as Quality;
   const step = (Math.abs(num) - 1) % 7;
   const t = TYPES[step];
+  // an interval without a quality is perfect or major
+  const q = (tokens[1] || (t === "P" ? "P" : "M")) as Quality;
   if (t === "M" && q === "P") {
     return NoInterval;
   }
   const type = t === "M" ? "majorable" : "perfectable";
+  const alt = qToAlt(type, q, step);
+  if (Number.isNaN(alt)) {
+    return NoInterval;
+  }
 
   const dir = num < 0 ? -1 : 1;
-  const name = (dir < 0 ? "-" : "") + upsToArrows(ups) + Math.abs(num) + q;
+  const name = (dir < 0 ? "-" : "") + ivlName(ups, Math.abs(num), q);
   const simple = num === 8 || num === -8 ? num : dir * (step + 1);
-  const alt = qToAlt(type, q);
   const oct = Math.floor((Math.abs(num) - 1) / 7);
   const semitones = dir * (SIZES[step] + alt + ups + 12 * oct);
   const chroma = (((dir * (SIZES[step] + alt + ups)) % 12) + 12) % 12;
@@ -210,7 +229,11 @@ export function coordToInterval(
   return interval(writtenUps ? { ...p, ups: writtenUps } : p) as Interval;
 }
 
-function qToAlt(type: Type, q: string): number {
+// mid: halfway between m and M, P and A (4th), P and d (5th)
+const MID_ALTS = [NaN, -0.5, -0.5, 0.5, -0.5, -0.5, -0.5];
+
+function qToAlt(type: Type, q: string, step: number): number {
+  if (q === "~") return MID_ALTS[step];
   return (q === "M" && type === "majorable") ||
     (q === "P" && type === "perfectable")
     ? 0
@@ -234,12 +257,17 @@ function pitchName(props: Pitch): string {
   const num = calcNum === 0 ? step + 1 : calcNum;
   const d = dir < 0 ? "-" : "";
   const type = TYPES[step] === "M" ? "majorable" : "perfectable";
-  const name = d + upsToArrows(ups) + num + altToQ(type, alt);
+  if (!Number.isInteger(alt) && alt !== MID_ALTS[step]) {
+    return "";
+  }
+  const name = d + ivlName(ups, num, altToQ(type, alt));
   return name;
 }
 
 function altToQ(type: Type, alt: number): Quality {
-  if (alt === 0) {
+  if (!Number.isInteger(alt)) {
+    return "~";
+  } else if (alt === 0) {
     return type === "majorable" ? "M" : "P";
   } else if (alt === -1 && type === "majorable") {
     return "m";
@@ -276,14 +304,25 @@ const EDO_CANDIDATES = [
   "7A",
   "2d",
   "1d",
+  "2~",
+  "3~",
+  "6~",
+  "7~",
+  "4~",
+  "5~",
 ];
 
 const edoNamesCache: Record<string, IntervalName[]> = {};
 // in ups: crossing a natural or using A/d costs more than one arrow
 const CROSSING_COST = 1.5;
 const ALTERED_COST = 1.5;
+// where a sharp is 5+ steps, two arrows read better than A or d
+const LARGE_SHARP_ALTERED_COST = 2.5;
 const TRITONES = ["4A", "5d"];
 const NO_ARROWS_COST = 100;
+// a mid between minor and major beats one arrow; a mid 4th or 5th ties it
+const MID_COST = 0.5;
+const PERFECT_MID_COST = 1;
 
 /**
  * Get the simplest interval name of every step of an EDO
@@ -302,6 +341,8 @@ export function edoIntervalNames(edo: number): IntervalName[] {
     const ivl = interval(candidate);
     const size = edoChroma(ivl, edo);
     const fullSize = edoSteps(ivl, edo);
+    const mid = ivl.q === "~";
+    if (Number.isNaN(size) || (mid && (proportional || !sharp))) return;
     const plain = /^[PMm]$/.test(ivl.q) ? 0 : 1;
     for (let step = 0; step < edo; step++) {
       const diff = (((step - size) % edo) + edo) % edo;
@@ -316,24 +357,38 @@ export function edoIntervalNames(edo: number): IntervalName[] {
         continue;
       const crosses = edoCrossesNatural({ ...ivl, ups }, edo);
       const altered =
-        plain && !((proportional || sharp > 0) && TRITONES.includes(candidate));
+        plain &&
+        !mid &&
+        !((proportional || sharp > 0) && TRITONES.includes(candidate));
+      const alteredCost =
+        altered && !noArrows
+          ? sharp >= 5
+            ? LARGE_SHARP_ALTERED_COST
+            : ALTERED_COST
+          : 0;
+      const midCost = mid
+        ? (ivl.type === "perfectable" ? PERFECT_MID_COST : MID_COST) +
+          (ups ? 1 : 0)
+        : 0;
       const cost = [
         Math.abs(ups) * (noArrows ? NO_ARROWS_COST : 1) +
-          (altered && !noArrows ? ALTERED_COST : 0) +
+          alteredCost +
+          midCost +
           (crosses ? CROSSING_COST : 0),
         plain,
         ups < 0 ? 1 : 0,
+        // upminor and downmajor before upmajor and downminor
+        (ups > 0 && ivl.q === "M") || (ups < 0 && ivl.q === "m") ? 1 : 0,
         order,
       ];
       const current = best[step];
       if (!current || compareCosts(cost, current.cost) < 0) {
-        const arrows = ups < 0 ? "↓".repeat(-ups) : "↑".repeat(ups);
-        best[step] = { name: arrows + candidate, cost };
+        best[step] = { name: ivlName(ups, ivl.num, ivl.q), cost };
       }
     }
   });
   return (edoNamesCache[key] = best.map((b) =>
-    b.name.replace(/^(↓+)1P$/, "$18P"),
+    withoutQuality(b.name.replace(/^(↓+)1$/, "$18"), edo),
   ));
 }
 
@@ -348,9 +403,37 @@ export function intervalFromEdoSteps(steps: number, edo = 12): IntervalName {
   const size = Math.abs(steps);
   const base = interval(edoIntervalNames(edo)[size % edo]);
   const octaves = (size - edoSteps(base, edo)) / edo;
-  const arrows = base.ups < 0 ? "↓".repeat(-base.ups) : "↑".repeat(base.ups);
-  const name = arrows + (base.num + 7 * octaves) + base.q;
-  return steps < 0 ? "-" + name : name;
+  const name = ivlName(base.ups, base.num + 7 * octaves, base.q);
+  return withoutQuality(steps < 0 ? "-" + name : name, edo);
+}
+
+/**
+ * Get an interval without a mid, spelled with ups or downs in an EDO
+ * @example
+ * edoPlainInterval("3~", 24) // => "↑3m"
+ * edoPlainInterval("5~", 24) // => "↓5"
+ */
+export function edoPlainInterval(
+  name: IntervalName,
+  edo?: number,
+): IntervalName {
+  const ivl = interval(name);
+  if (ivl.empty || ivl.q !== "~" || edo === undefined) return ivl.name;
+  const steps = edoSteps(ivl, edo);
+  if (Number.isNaN(steps)) return "";
+  // minor and 4th take ups, 5th takes downs
+  const q = ivl.type === "majorable" ? "m" : "P";
+  const base = interval(ivl.dir * Math.abs(ivl.num) + q);
+  const ups = ivl.dir * (steps - edoSteps(base, edo));
+  return (ivl.dir < 0 ? "-" : "") + ivlName(ups, Math.abs(ivl.num), q);
+}
+
+// every interval is perfect where a sharp is 0 steps: no quality
+function withoutQuality(name: IntervalName, edo: number): IntervalName {
+  const profile = edoProfile(edo);
+  return profile.spelling === "fifths" && profile.sharp === 0
+    ? name.replace(/[PMm]$/, "")
+    : name;
 }
 
 function compareCosts(a: number[], b: number[]): number {

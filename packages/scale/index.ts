@@ -118,8 +118,9 @@ export function get(
   }
 
   const type = st.name;
+  const edo = edoOption(options);
   const notes: string[] = tonic
-    ? st.intervals.map((i) => transpose(tonic, i))
+    ? st.intervals.map((i) => transpose(tonic, i, edo))
     : [];
 
   const name = tonic ? tonic + " " + type : type;

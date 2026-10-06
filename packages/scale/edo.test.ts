@@ -8,36 +8,36 @@ describe("scales in other EDOs", () => {
     expect(Scale.get("C rast").notes).toEqual([
       "C",
       "D",
-      "E↓",
+      "↓E",
       "F",
       "G",
       "A",
-      "B↓",
+      "↓B",
     ]);
-    expect(Scale.get("D bayati").notes).toEqual("D E↓ F G A Bb C".split(" "));
-    expect(Scale.get("D saba").notes).toEqual("D E↓ F Gb A Bb C".split(" "));
-    expect(Scale.get("E↓ sikah").notes).toEqual("E↓ F G A B↓ C D".split(" "));
-    expect(Scale.get("E↓ sikah").tonic).toBe("E↓");
+    expect(Scale.get("D bayati").notes).toEqual("D ↓E F G A Bb C".split(" "));
+    expect(Scale.get("D saba").notes).toEqual("D ↓E F Gb A Bb C".split(" "));
+    expect(Scale.get("↓E sikah").notes).toEqual("↓E F G A ↓B C D".split(" "));
+    expect(Scale.get("↓E sikah").tonic).toBe("↓E");
   });
 
   test("detect", () => {
     expect(
-      Scale.detect("C D E↓ F G A B↓".split(" "), { ...Q24, match: "exact" }),
+      Scale.detect("C D ↓E F G A ↓B".split(" "), { ...Q24, match: "exact" }),
     ).toEqual(["C rast"]);
     expect(
-      Scale.detect("D E↓ F G A Bb C".split(" "), { ...Q24, match: "exact" }),
+      Scale.detect("D ↓E F G A Bb C".split(" "), { ...Q24, match: "exact" }),
     ).toEqual(["D bayati"]);
     // traditional scales are found in other EDOs too
     expect(
       Scale.detect("C D E F G A B".split(" "), { ...Q24, match: "exact" }),
     ).toEqual(["C major"]);
     // tetrachord: fits in rast
-    expect(Scale.detect(["C", "D", "E↓", "F"], Q24)).toContain("C rast");
+    expect(Scale.detect(["C", "D", "↓E", "F"], Q24)).toContain("C rast");
   });
 
   test("scaleChords", () => {
     const chords = Scale.scaleChords("rast", Q24);
-    expect(chords).toContain("(↓3)");
+    expect(chords).toContain("~");
     expect(chords).toContain("5");
     expect(chords).not.toContain("M");
     // unchanged in 12-EDO
@@ -58,20 +58,20 @@ describe("scales in other EDOs", () => {
       Scale.modeNames("C major"),
     );
     // husayni, sikah, nairuz and 'iraq use the notes of rast, starting from
-    // D, E↓, G and B↓
+    // D, ↓E, G and ↓B
     expect(Scale.modeNames("C rast", Q24)).toEqual([
       ["C", "rast"],
       ["D", "husayni"],
-      ["E↓", "sikah"],
+      ["↓E", "sikah"],
       ["G", "nairuz"],
-      ["B↓", "iraq"],
+      ["↓B", "iraq"],
     ]);
   });
 
   test("rangeOf", () => {
     const range = Scale.rangeOf("C rast", Q24);
-    expect(range("C4", "C5")).toEqual("C4 D4 E↓4 F4 G4 A4 B↓4 C5".split(" "));
-    expect(range("C5", "G4")).toEqual("C5 B↓4 A4 G4".split(" "));
+    expect(range("C4", "C5")).toEqual("C4 D4 ↓E4 F4 G4 A4 ↓B4 C5".split(" "));
+    expect(range("C5", "G4")).toEqual("C5 ↓B4 A4 G4".split(" "));
     expect(Scale.rangeOf("C major", { edo: 31 })("B3", "D4")).toEqual([
       "B3",
       "C4",
@@ -81,21 +81,21 @@ describe("scales in other EDOs", () => {
 
   test("degrees", () => {
     const rast = Scale.degrees("C rast");
-    expect([1, 3, 7, 8].map(rast)).toEqual(["C", "E↓", "B↓", "C"]);
+    expect([1, 3, 7, 8].map(rast)).toEqual(["C", "↓E", "↓B", "C"]);
   });
 });
 
 describe("more maqamat", () => {
   test("notes on their traditional tonics", () => {
-    expect(Scale.get("E↓ huzam").notes).toEqual("E↓ F G Ab B C D".split(" "));
-    expect(Scale.get("B↓ iraq").notes).toEqual("B↓ C D E↓ F G A".split(" "));
-    expect(Scale.get("C nairuz").notes).toEqual("C D E↓ F G A↓ Bb".split(" "));
-    expect(Scale.get("C suznak").notes).toEqual("C D E↓ F G Ab B".split(" "));
+    expect(Scale.get("↓E huzam").notes).toEqual("↓E F G Ab B C D".split(" "));
+    expect(Scale.get("↓B iraq").notes).toEqual("↓B C D ↓E F G A".split(" "));
+    expect(Scale.get("C nairuz").notes).toEqual("C D ↓E F G ↓A Bb".split(" "));
+    expect(Scale.get("C suznak").notes).toEqual("C D ↓E F G Ab B".split(" "));
   });
 
   test("detected in 24-EDO", () => {
     expect(
-      Scale.detect("C D E↓ F G Ab B".split(" "), {
+      Scale.detect("C D ↓E F G Ab B".split(" "), {
         edo: 24,
         match: "exact",
       }),

@@ -31,7 +31,7 @@ import:
 ```js
 import { Chord, Interval, Note } from "@dmnerd/microtonal"; // was "tonal"
 
-Note.edoSteps("E↓4", 24); // => 103
+Note.edoSteps("↓E4", 24); // => 103
 Chord.get("C7sus4no5").notes; // => ["C", "F", "Bb"]
 ```
 
@@ -50,8 +50,8 @@ browser, use an ES module CDN such as
 
 ## How it works: ups and downs
 
-The fork uses [ups and downs notation](https://en.xen.wiki/w/Ups_and_downs_notation)
-(Kite), the standard way to spell notes in any EDO:
+The fork uses [Kite's ups and downs notation](https://en.xen.wiki/w/Kite%27s_ups_and_downs_notation),
+the standard way to spell notes in any EDO:
 
 - Tonal already describes every note and interval as a number of **fifths** and
   **octaves**. That description is tuning-independent.
@@ -62,25 +62,37 @@ The fork uses [ups and downs notation](https://en.xen.wiki/w/Ups_and_downs_notat
   Tonal's existing results exactly.
 
 For example, in 24-EDO a sharp is 2 steps and an up is 1 (a quarter-tone), so
-`E↓` is a quarter-tone below E, and a neutral third is `↓3M` (a major third,
-one step down).
+`↓E` is a quarter-tone below E, and the neutral third halfway between minor and
+major is the mid third `3~`.
 
-Spelling follows Kite's choices (plain qualities with ups and downs, e.g.
-31-EDO `↑2M`, `↓3m` rather than `3d`, `2A`; no ups or downs where a sharp is
-one step). Where the fork writes things differently, it is on purpose:
+Names follow Kite's notation: the arrows come before the note (`↑Db4`),
+plain qualities take ups and downs (31-EDO `↑2M`, `↓3m`, not `3d`, `2A`), a
+perfect interval with arrows drops its quality (`↑4`, `↓8`), the interval
+halfway between two qualities is mid (`~`), intervals have no quality where a
+sharp is 0 steps (`↑3` in 14-EDO), and chord symbols use global arrows,
+added notes and alterations (`C↓7`, `C,↓7`, `C(↓5)`). EDOs where a sharp is
+one step (12, 19) need no arrows at all.
 
-- **Arrows after the note**: `Db↑`, not `^Db`, so note names keep Tonal's
-  letter-first form (`^Db` and `vE` are still accepted as input). See
-  [Notes and intervals](#notes-and-intervals).
-- **Chord symbols** put the altered degrees in parentheses (`C(↓3)`, Kite:
-  `Cv`), since `^` already means major in Tonal. See
-  [Chord types](#chord-types).
-- **No mid symbol**: Kite writes an interval exactly between major and minor
-  as mid (`~3`). The fork names it with an up or a down (`↑3m`, the same step
-  as `↓3M`), so every interval stays a Tonal quality plus arrows.
-- **No quality-less intervals**: where a sharp is 0 steps (7, 14, 21, 28,
-  35-EDO) major and minor are the same size and Kite omits the quality
-  (`^3`). The fork keeps one (`↑3m`), as every Tonal interval has one.
+Where the fork writes things differently, it is to stay compatible with
+Tonal:
+
+- **Arrow glyphs**: names are written with `↑` and `↓`. Kite's ASCII `^` and
+  `v` are read as input (`^Db`, `vM3`, `Cv7`, `vVI`), but `^` already means
+  major in Tonal chord symbols, so the glyphs keep both readable.
+- **Interval order**: Tonal writes the number first (`3M`, `5P`), so Kite's
+  `vM3` is `↓3M` and `~3` is `3~`. Kite's order is read as input.
+- **`^` in chord symbols**: where `^` forms a Tonal chord symbol it keeps
+  Tonal's meaning (`C^7` is C major seventh, `C^` is C major). Write Kite's
+  up-seven as `C↑7`.
+- **Suspended chords**: `C2` and `C4` are Tonal's add9 and quartal chords, so
+  Kite's `Cv4` is written `C↓sus4`.
+- **Harmonic and subharmonic chords** are `har7` and `sub7` only: `h7` is
+  Tonal's half-diminished chord.
+- **Many arrows** are repeated (`↑↑↑↑`); Kite's shorthand for four or more
+  (`v>`, `>`) is not used.
+
+See [Notes and intervals](#notes-and-intervals) and
+[Chord types](#chord-types).
 
 ## Status
 
@@ -119,6 +131,10 @@ Developed on the `main` branch. Last synced with upstream Tonal `main` at
 9. **Published to npm** — _done_: as one package,
    [`@dmnerd/microtonal`](https://www.npmjs.com/package/@dmnerd/microtonal).
    See [Install](#install) and [Releasing](#releasing).
+10. **Kite's notation throughout** — _done_: arrows before the note, mid
+    intervals (`3~`), no quality on perfect intervals with arrows or where a
+    sharp is 0 steps, Kite's chord names (`ChordType.get` reads global
+    arrows, added notes and alterations), `vVI` roman numerals.
 
 ### Syncing with upstream
 
@@ -161,29 +177,56 @@ Versions follow semver for this package alone, unrelated to Tonal's versions.
 #### Notes and intervals
 
 **Ups and downs in names.** Notes and intervals accept ups/downs; names are
-always written back with arrows (after the accidentals for notes, before the
-number for intervals):
+always written back with arrows before the note, and before the number for
+intervals. A perfect interval with arrows has no quality, as in Kite's
+notation:
 
 ```js
 import { Interval, Note } from "@dmnerd/microtonal";
 
-Note.get("^C#4").name; // => "C#↑4"   (Kite's ASCII prefix also accepted)
-Note.get("vEb").name; // => "Eb↓"
-Note.get("E↓4").ups; // => -1
+Note.get("^C#4").name; // => "↑C#4"   (Kite's ASCII also accepted)
+Note.get("C#↑4").name; // => "↑C#4"   (so are arrows after the note)
+Note.get("vEb").name; // => "↓Eb"
+Note.get("↓E4").ups; // => -1
 Interval.get("vM3").name; // => "↓3M"
-Interval.get("-↑5P").name; // => "-↑5P"
+Interval.get("^P4").name; // => "↑4"
+Interval.get("-↑5P").name; // => "-↑5"
 ```
 
 A new `ups` property (`0` when there are none) is added to `Note` and
 `Interval` objects and to the `Pitch` type. The fifths/octaves `coord` is
 unchanged, so it still describes the unmarked note.
 
+**Mid intervals.** Kite's mid (`~`) is the interval halfway between minor and
+major, between perfect and augmented (4th), or between perfect and
+diminished (5th). It exists in EDOs where a sharp is an even number of steps:
+
+```js
+Interval.get("~3").name; // => "3~"
+Interval.edoSteps("3~", 24); // => 7   (the neutral third)
+Interval.edoSteps("3~", 41); // => 12
+Interval.edoSteps("3~", 22); // => NaN (a sharp is 3 steps)
+Interval.invert("3~"); // => "6~"
+edoPlainInterval("3~", 24); // => "↑3m"  (the same step without a mid)
+```
+
+A mid is stored as half an accidental (`alt` of `-0.5` or `0.5`), so its
+legacy `semitones` is fractional (`3.5`). Notes can't be mid: transposing by a
+mid needs an EDO: `transpose("C", "3~", 24)` => `"↑Eb"`, and the `edo`
+option of `Chord.get` and `Scale.get` passes it on.
+
+**Intervals without a quality.** Where a sharp is 0 steps (7, 14, 21, 28,
+35-EDO) major and minor are the same size, and Kite leaves the quality out.
+An interval written without one (`"3"`, `"↑3"`) is read as major or
+perfect (`Interval.get("3").name` is `"3M"`); names without a quality are
+only written for those EDOs.
+
 **Sizes in any EDO.** New functions give sizes in steps of N-EDO; ups and
 downs are one step each:
 
 ```js
 Note.edoSteps("E4", 24); // => 104   (C0 = 0)
-Note.edoChroma("E↓", 24); // => 7    (quarter-tone below E)
+Note.edoChroma("↓E", 24); // => 7    (quarter-tone below E)
 Note.edoChroma("F#", 19); // => 9
 Interval.edoSteps("↓3M", 24); // => 7  (neutral third)
 Interval.edoSteps("-5P", 19); // => -11
@@ -245,12 +288,12 @@ is ±2 semitones unless `bendRange` is set, and it must match the synth's), and
 MIDI part for any frequency:
 
 ```js
-Note.edoFreq("A↑4", 24); // => 452.89…  (a quarter tone above A4)
+Note.edoFreq("↑A4", 24); // => 452.89…  (a quarter tone above A4)
 Note.edoFreq("C4", 19, { refNote: "C4", refFreq: 256 }); // => 256
-Note.edoMidi("E↓4", 24); // => { midi: 64, cents: -50, bend: 6144 }
+Note.edoMidi("↓E4", 24); // => { midi: 64, cents: -50, bend: 6144 }
 Note.fromEdoSteps(104, 24); // => "E4"   (C0 = 0)
-Note.fromEdoSteps(103, 24); // => "Eb↑4"
-Note.fromEdoSteps(7, 24, { pitchClass: true }); // => "Eb↑"
+Note.fromEdoSteps(103, 24); // => "↑Eb4"
+Note.fromEdoSteps(7, 24, { pitchClass: true }); // => "↑Eb"
 ```
 
 Steps are spelled with the simplest name above C (fewest ups and downs), the
@@ -261,12 +304,12 @@ octaves included), and `Note.transposeEdoSteps` moves a note by a number of
 steps, keeping its letter where it can:
 
 ```js
-Interval.fromEdoSteps(7, 24); // => "↑3m"
-Interval.fromEdoSteps(31, 24); // => "↑10m"
+Interval.fromEdoSteps(7, 24); // => "3~"
+Interval.fromEdoSteps(31, 24); // => "10~"
 Interval.fromEdoSteps(-11, 19); // => "-5P"
-Interval.fromEdoSteps(40, 41); // => "↓8P"  (an octave less one step)
-Note.transposeEdoSteps("C#", 1, 24); // => "C#↑"
-Note.transposeEdoSteps("E4", -1, 24); // => "E↓4"
+Interval.fromEdoSteps(40, 41); // => "↓8"  (an octave less one step)
+Note.transposeEdoSteps("C#", 1, 24); // => "↑C#"
+Note.transposeEdoSteps("E4", -1, 24); // => "↓E4"
 ```
 
 In "proportional" EDOs, where a spelled interval can land on another step,
@@ -287,21 +330,21 @@ would, and `Note.fromEdoSteps(steps, edo, { accidental })` uses the same
 spelling:
 
 ```js
-Note.edoNames(24, "sharp"); // => ["C", "C↑", "C#", "C#↑", "D", …]
-Note.edoNames(24, "flat"); // => ["C", "Db↓", "Db", "D↓", "D", …]
+Note.edoNames(24, "sharp"); // => ["C", "↑C", "C#", "↑C#", "D", …]
+Note.edoNames(24, "flat"); // => ["C", "↓Db", "Db", "↓D", "D", …]
 Note.edoNames(19, "sharp"); // => ["C", "C#", "Db", "D", …, "E", "E#", "F", …]
-Note.edoNames(31, "sharp"); // => ["C", "C↑", "C#", "Db", "Db↑", "D", …]
-Note.edoNames(41, "sharp"); // => ["C", "C↑", "Db↓", "Db", "C#", "C#↑", "D↓", "D", …]
-Note.fromEdoSteps(103, 24, { accidental: "sharp" }); // => "D#↑4"
+Note.edoNames(31, "sharp"); // => ["C", "↑C", "C#", "Db", "↑Db", "D", …]
+Note.edoNames(41, "sharp"); // => ["C", "↑C", "↓Db", "Db", "C#", "↑C#", "↓D", "D", …]
+Note.fromEdoSteps(103, 24, { accidental: "sharp" }); // => "↑D#4"
 ```
 
 Every natural, single and double sharp and flat, with any number of ups or
 downs, is a candidate; the winner has, in order:
 
 1. the fewest ups or downs, counting a double sharp or flat as one more (so
-   31-EDO step 1 is `C↑`, not `B##`), and a spelling that lands on or past
-   a neighbouring natural as one and a half more (so 41-EDO step 1 is `C↑`,
-   not `B#`, which is above C there, and the 53-EDO 5/4 third is `E↓`, not
+   31-EDO step 1 is `↑C`, not `B##`), and a spelling that lands on or past
+   a neighbouring natural as one and a half more (so 41-EDO step 1 is `↑C`,
+   not `B#`, which is above C there, and the 53-EDO 5/4 third is `↓E`, not
    `Fb`, which is below E). `E#` in 19-EDO lies between E and F, so it stays.
 2. ups in the sharp view, downs in the flat view
 3. the fewest accidentals
@@ -316,15 +359,15 @@ both views in EDOs 5 to 72.
 **Operations keep ups and downs:**
 
 - `Note.transpose` / `Interval.distance` — `transpose("C4", "↓3M")` =>
-  `"E↓4"`, `distance("C↑", "G")` => `"↓5P"`. A descending interval's ups
-  count against its direction: `transpose("C4", "-↑3M")` => `"Ab↓3"`.
+  `"↓E4"`, `distance("↑C", "G")` => `"↓5"`. A descending interval's ups
+  count against its direction: `transpose("C4", "-↑3M")` => `"↓Ab3"`.
 - `Note.transposeFifths`, `Note.transposeOctaves`,
   `Interval.transposeFifths`.
-- `Interval.add` / `subtract` — `add("↓3M", "3m")` => `"↓5P"`.
+- `Interval.add` / `subtract` — `add("↓3M", "3m")` => `"↓5"`.
 - `Interval.invert` flips them — `invert("↓3M")` => `"↑6m"`.
 - `Interval.simplify` — `simplify("↓10M")` => `"↓3M"`.
 - `Note.simplify` / `Note.enharmonic` respell the note in 12-TET and keep
-  the ups: `simplify("C##↑")` => `"D↑"`. That assumes C## = D, which holds in
+  the ups: `simplify("↑C##")` => `"↑D"`. That assumes C## = D, which holds in
   12- and 24-EDO but not in every EDO (in 19-EDO C## ≠ D). Pass `{ edo }` to
   respell the note's exact step in that EDO instead, with the spelling rules
   of `Note.edoNames`:
@@ -332,8 +375,8 @@ both views in EDOs 5 to 72.
   ```js
   Note.simplify("C##", { edo: 19 }); // => "Db"  (C## is Db in 19-EDO)
   Note.simplify("E#", { edo: 19 }); // => "E#"  (E# is not F)
-  Note.simplify("Db↑", { edo: 24 }); // => "D↓"
-  Note.enharmonic("C#↑", undefined, { edo: 24 }); // => "D↓"
+  Note.simplify("↑Db", { edo: 24 }); // => "↓D"
+  Note.enharmonic("↑C#", undefined, { edo: 24 }); // => "↓D"
   Note.enharmonic("E#4", undefined, { edo: 19 }); // => "Fb4"
   Note.enharmonic("C#", "Db", { edo: 19 }); // => ""  (different steps)
   ```
@@ -351,10 +394,10 @@ property (`12` for traditional sets):
 ```js
 import { Pcset } from "@dmnerd/microtonal";
 
-Pcset.get(["C", "E↓", "G"], { edo: 24 }).chroma;
+Pcset.get(["C", "↓E", "G"], { edo: 24 }).chroma;
 // => "100000010000001000000000"
-Pcset.intervals(["C", "E↓", "G"], { edo: 24 }); // => ["1P", "↑3m", "5P"]
-Pcset.isEqual(["C", "E↓"], ["C", "Eb↑"], { edo: 24 }); // => true
+Pcset.intervals(["C", "↓E", "G"], { edo: 24 }); // => ["1P", "3~", "5P"]
+Pcset.isEqual(["C", "↓E"], ["C", "↑Eb"], { edo: 24 }); // => true
 ```
 
 - A chroma only counts as valid when its length matches the edo (12 by
@@ -364,15 +407,20 @@ Pcset.isEqual(["C", "E↓"], ["C", "Eb↑"], { edo: 24 }); // => true
   directly. Subset and equality checks compare chromas instead of 32-bit set
   numbers, so they work for any EDO. `setNum` itself is only exact up to
   53-EDO.
-- `intervals` names each step with the simplest spelling: fewest ups/downs,
-  where an augmented or diminished interval (other than the tritone) and an
-  interval that lands on or past a neighbouring major scale degree each cost
-  one and a half more; then plain qualities (P, M, m) before
-  augmented/diminished, then ups before downs. EDOs whose sharp is one step
-  (12, 19) use no ups or downs, and the step below the octave is `↓8P`. In
-  24-EDO the neutral third is `↑3m`; in 31-EDO step 7 is `↓3m`, not `2A`; in
-  19-EDO step 1 is `1A`; in 41-EDO step 1 is `↑1P`, not `7A`, and in 53-EDO
-  4:5:6:7 is `1P ↓3M 5P ↓7m`.
+- `intervals` names each step with the simplest spelling, counted in arrows:
+  - each up or down costs 1; an augmented or diminished interval (other than
+    the tritone) 1.5, or 2.5 where a sharp is 5 or more steps; an interval
+    that lands on or past a neighbouring major scale degree 1.5 more
+  - a mid costs 0.5 (a mid 4th or 5th 1), plus 1 if it has arrows
+  - ties go to plain qualities (P, M, m), then ups, then upminor and
+    downmajor (`↑3m`, `↓3M`) before upmajor and downminor
+
+  EDOs whose sharp is one step (12, 19) use no ups or downs, the step below
+  the octave is `↓8`, and where a sharp is 0 steps intervals have no
+  quality. In 24-EDO the neutral third is `3~`; in 31-EDO step 7 is `↓3m`,
+  not `2A`; in 19-EDO step 1 is `1A`; in 41-EDO step 1 is `↑1`, not `7A`; in
+  14-EDO step 5 is `↑3`, and in 53-EDO 4:5:6:7 is `1P ↓3M 5P ↓7m`.
+
 - `Pcset.chromas()` still lists the 12-EDO chromas only.
 - `normalized` (the smallest rotation starting with a pitch class) is found by
   comparing rotations in place on the chroma written twice, for every EDO.
@@ -383,23 +431,63 @@ Pcset.isEqual(["C", "E↓"], ["C", "Eb↑"], { edo: 24 }); // => true
 
 #### Chord types
 
-A microtonal chord dictionary is added, spelled in ups and downs:
+**Kite's chord names.** Chord symbols follow
+[Kite's chord names](https://en.xen.wiki/w/Kite%27s_ups_and_downs_notation#Chords_and_chord_progressions),
+and `ChordType.get` (so `Chord.get`) reads them on top of any Tonal chord
+type:
 
-| Name                               | Intervals     | Symbol      |
-| ---------------------------------- | ------------- | ----------- |
-| downmajor                          | 1P ↓3M 5P     | `(↓3)`, `n` |
-| upmajor                            | 1P ↑3M 5P     | `(↑3)`      |
-| upminor                            | 1P ↑3m 5P     | `m(↑3)`     |
-| downminor                          | 1P ↓3m 5P     | `m(↓3)`     |
-| suspended downsecond               | 1P ↓2M 5P     | `sus↓2`     |
-| suspended upfourth                 | 1P ↑4P 5P     | `sus↑4`     |
-| dominant seventh downmajor third   | 1P ↓3M 5P 7m  | `7(↓3)`     |
-| downmajor seventh                  | 1P ↓3M 5P ↓7m | `7(↓3,↓7)`  |
-| dominant seventh downminor seventh | 1P 3M 5P ↓7m  | `7(↓7)`     |
-| upminor seventh                    | 1P ↑3m 5P ↑7m | `m7(↑3,↑7)` |
-| downminor seventh                  | 1P ↓3m 5P ↓7m | `m7(↓3,↓7)` |
-| major seventh downmajor third      | 1P ↓3M 5P 7M  | `maj7(↓3)`  |
-| minor downmajor seventh            | 1P 3m 5P ↓7M  | `m(↓maj7)`  |
+- An arrow or mid right after the root is a **global arrow**: it changes the
+  3rd, 6th, 7th and 11th, or the 2nd or 4th of a suspended chord (`C↓7` is
+  `C ↓E G ↓Bb`). A chord with none of those (`C↓5`) is invalid.
+- An **added note** follows the chord type, after a comma when it would
+  otherwise merge with it: `C↓,7` is `C ↓E G Bb`, `C,↓7` is `C E G ↓Bb`,
+  `Cm↓7`, `C7↓9`, `C↓6,9`. Accidentals are relative to the major scale
+  (`C,b6` adds Ab, `C,#7` adds B#); a 7th alone is minor. `no5` leaves a note
+  out.
+- **Alterations** go in parentheses and change a note of the chord:
+  `C(↓5)`, `CM9(↓5↓7)`, `Cm7(↓b5)`. A 2nd or 4th replaces the 3rd
+  (`C(b4)` is `C Fb G`).
+- ASCII arrows are read too (`Cv7`, `C^m`, `C,v7`), except where `^` forms a
+  Tonal chord symbol (`C^7` stays major seventh).
+- A chord that equals a dictionary chord gets that chord's name and symbol
+  (`Chord.get("C,7").symbol` => `"C7"`).
+
+```js
+Chord.get("C↓7").notes; // => ["C", "↓E", "G", "↓Bb"]
+Chord.get("C,↓7").notes; // => ["C", "E", "G", "↓Bb"]
+Chord.get("Cm7(↓b5)").notes; // => ["C", "Eb", "↓Gb", "Bb"]
+Chord.get("C~", { edo: 24 }).notes; // => ["C", "↑Eb", "G"]
+```
+
+A mid chord needs an EDO to be spelled; without one its mid note is `""`.
+
+A microtonal chord dictionary is added for chord detection, with Kite's
+symbols:
+
+| Name                               | Intervals     | Symbol           |
+| ---------------------------------- | ------------- | ---------------- |
+| mid                                | 1P 3~ 5P      | `~`              |
+| mid seventh                        | 1P 3~ 5P 7~   | `~7`             |
+| dominant seventh mid third         | 1P 3~ 5P 7m   | `~,7`            |
+| major seventh mid third            | 1P 3~ 5P 7M   | `~,M7`           |
+| minor mid seventh                  | 1P 3m 5P 7~   | `m~7`            |
+| downmajor                          | 1P ↓3M 5P     | `↓`, `n`         |
+| upmajor                            | 1P ↑3M 5P     | `↑`              |
+| upminor                            | 1P ↑3m 5P     | `↑m`             |
+| downminor                          | 1P ↓3m 5P     | `↓m`             |
+| suspended downsecond               | 1P ↓2M 5P     | `↓sus2`          |
+| suspended upfourth                 | 1P ↑4 5P      | `↑sus4`          |
+| dominant seventh downmajor third   | 1P ↓3M 5P 7m  | `↓,7`, `n7`      |
+| downmajor seventh                  | 1P ↓3M 5P ↓7m | `↓7`             |
+| dominant seventh downminor seventh | 1P 3M 5P ↓7m  | `,↓7`            |
+| upminor seventh                    | 1P ↑3m 5P ↑7m | `↑m7`            |
+| downminor seventh                  | 1P ↓3m 5P ↓7m | `↓m7`            |
+| major seventh downmajor third      | 1P ↓3M 5P 7M  | `↓,M7`, `↓,maj7` |
+| minor downmajor seventh            | 1P 3m 5P ↓7M  | `m↓M7`, `m↓maj7` |
+
+The mid chords come first, so where a sharp is two steps (17, 24, 31-EDO) a
+downmajor or upminor third is named mid, as Kite does (`C~`). Where a sharp
+is four steps they are other chords (41-EDO `C~` is `C ↓↓E G`).
 
 **Harmonic and subharmonic chords.** Following the Xenharmonic Wiki's `har`
 and `sub` names, chords defined by frequency ratios are built in each EDO from
@@ -418,19 +506,15 @@ keeps the traditional dictionary):
 | subharmonic sixth    | 12:10:8:7              | `sub6`  |
 
 ```js
-Chord.get("Char7", { edo: 72 }).notes; // => ["C", "E↓", "G", "Bb↓↓"]
+Chord.get("Char7", { edo: 72 }).notes; // => ["C", "↓E", "G", "↓↓Bb"]
 Chord.detect(["C", "E", "G", "Bbb"], { edo: 19 }); // => ["Char7"]
 ChordType.addFromRatios(["1/1", "5/4", "3/2", "15/8"], ["j7"], "just maj7");
 ```
 
 `ChordType.forEdo` offers them where no other chord has the same notes: in
-24- and 31-EDO 4:5:6:7 keeps its spelled name `7(↓7)`, in 41- and 53-EDO
-`7(↓3,↓7)`. The wiki's short forms (`h7`, `s7`) aren't used, since `h7` is
-already the half-diminished chord in Tonal.
-
-Symbols put the altered degrees in parentheses: `^` already means major in
-Tonal (`C^7`), and an arrow straight after the root is read as part of the
-root (`C↓7` is a C↓ dominant seventh).
+24- and 31-EDO 4:5:6:7 keeps its spelled name `,↓7`, in 41- and 53-EDO `↓7`.
+The wiki's short forms (`h7`, `s7`) aren't used, since `h7` is already the
+half-diminished chord in Tonal.
 
 - `ChordType.get` finds these by name or symbol. `ChordType.all()` still
   returns only the 108 traditional chords, and the 12-EDO chroma index is
@@ -441,8 +525,8 @@ root (`C↓7` is a C↓ dominant seventh).
   whose tones merge in that EDO. It includes microtonal chords only where an
   up is smaller than a sharp (17, 22, 24, 31, 41, 53-EDO…), and only when
   they differ from every traditional chord. When two microtonal chords are the
-  same set, the first one listed wins: in 24-EDO downmajor and upminor are the
-  same neutral triad, so it is named `(↓3)`.
+  same set, the first one listed wins: in 24-EDO mid, downmajor and upminor
+  are the same neutral triad, so it is named `~`.
 
 #### Chord detection and chords
 
@@ -451,9 +535,10 @@ root (`C↓7` is a C↓ dominant seventh).
 ```js
 import { Chord } from "@dmnerd/microtonal";
 
-Chord.detect(["C", "E↓", "G"], { edo: 24 }); // => ["C(↓3)"]
-Chord.detect(["C", "Eb↑", "G"], { edo: 24 }); // => ["C(↓3)"]
-Chord.detect(["E↓", "G", "C"], { edo: 24 }); // => ["C(↓3)/E↓"]
+Chord.detect(["C", "↓E", "G"], { edo: 24 }); // => ["C~"]
+Chord.detect(["C", "↑Eb", "G"], { edo: 24 }); // => ["C~"]
+Chord.detect(["↓E", "G", "C"], { edo: 24 }); // => ["C~/↓E"]
+Chord.detect(["C", "↓E", "G"], { edo: 53 }); // => ["C↓"]
 Chord.detect(["C", "E", "G"], { edo: 31 }); // => ["CM", …]
 ```
 
@@ -462,10 +547,10 @@ Chord.detect(["C", "E", "G"], { edo: 31 }); // => ["CM", …]
 - `assumePerfectFifth` works in any EDO. Its hard-coded 12-bit masks are
   replaced by step ranges derived from the EDO; they give the same steps in
   12-EDO.
-- `Chord.get` understands upped or downed roots and basses (`"E↓m"`,
-  `"^Ebmaj7"`, `"C(↓3)/E↓"`) and the microtonal chord types:
-  `Chord.get("C(↓3)").notes` => `["C", "E↓", "G"]`. Inversions keep their
-  ups, and `Chord.transpose("Cm", "↓2M")` => `"D↓m"`.
+- `Chord.get` understands upped or downed roots and basses (`"↓Em"`,
+  `"^Ebmaj7"`, `"C↓/↓E"`): only arrows before the root belong to it, so
+  `E↓m` is E downminor and `↓Em` is ↓E minor. Inversions keep their ups, and
+  `Chord.transpose("Cm", "↓2M")` => `"↓Dm"`.
 
 **Detection ranking (changed from upstream).** Upstream Tonal lists every
 chord rooted on the bass before any inversion, so a plain first-inversion C
@@ -490,20 +575,20 @@ upstream test changed: they only cover cases where both orders agree.
 A microtonal scale dictionary is added: Arabic maqamat (ascending forms, from
 [Maqam World](https://www.maqamworld.com/en/maqam.php)) and the mosh modes.
 
-| Name         | Intervals                  | Notes (traditional tonic) |
-| ------------ | -------------------------- | ------------------------- |
-| rast         | 1P 2M ↓3M 4P 5P 6M ↓7M     | C D E↓ F G A B↓           |
-| bayati       | 1P ↓2M 3m 4P 5P 6m 7m      | D E↓ F G A Bb C           |
-| saba         | 1P ↓2M 3m 4d 5P 6m 7m      | D E↓ F Gb A Bb C          |
-| sikah        | 1P ↑2m ↑3m ↑4P 5P ↑6m ↑7m  | E↓ F G A B↓ C D           |
-| huzam        | 1P ↑2m ↑3m ↑4d ↑5P ↑6m ↑7m | E↓ F G Ab B C D           |
-| iraq         | 1P ↑2m ↑3m 4P ↑5d ↑6m ↑7m  | B↓ C D E↓ F G A           |
-| nairuz       | 1P 2M ↓3M 4P 5P ↓6M 7m     | C D E↓ F G A↓ Bb          |
-| suznak       | 1P 2M ↓3M 4P 5P 6m 7M      | C D E↓ F G Ab B           |
-| mahur        | 1P 2M ↓3M 4P 5P 6M 7M      | C D E↓ F G A B            |
-| bayati shuri | 1P ↓2M 3m 4P 5d 6M 7m      | D E↓ F G Ab B C           |
-| husayni      | 1P ↓2M 3m 4P 5P ↓6M 7m     | D E↓ F G A B↓ C           |
-| hijaz        | 1P 2m 3M 4P 5P ↓6M 7m      | D Eb F# G A B↓ C          |
+| Name         | Intervals                 | Notes (traditional tonic) |
+| ------------ | ------------------------- | ------------------------- |
+| rast         | 1P 2M ↓3M 4P 5P 6M ↓7M    | C D ↓E F G A ↓B           |
+| bayati       | 1P ↓2M 3m 4P 5P 6m 7m     | D ↓E F G A Bb C           |
+| saba         | 1P ↓2M 3m 4d 5P 6m 7m     | D ↓E F Gb A Bb C          |
+| sikah        | 1P ↑2m ↑3m ↑4 5P ↑6m ↑7m  | ↓E F G A ↓B C D           |
+| huzam        | 1P ↑2m ↑3m ↑4d ↑5 ↑6m ↑7m | ↓E F G Ab B C D           |
+| iraq         | 1P ↑2m ↑3m 4P ↑5d ↑6m ↑7m | ↓B C D ↓E F G A           |
+| nairuz       | 1P 2M ↓3M 4P 5P ↓6M 7m    | C D ↓E F G ↓A Bb          |
+| suznak       | 1P 2M ↓3M 4P 5P 6m 7M     | C D ↓E F G Ab B           |
+| mahur        | 1P 2M ↓3M 4P 5P 6M 7M     | C D ↓E F G A B            |
+| bayati shuri | 1P ↓2M 3m 4P 5d 6M 7m     | D ↓E F G Ab B C           |
+| husayni      | 1P ↓2M 3m 4P 5P ↓6M 7m    | D ↓E F G A ↓B C           |
+| hijaz        | 1P 2m 3M 4P 5P ↓6M 7m     | D Eb F# G A ↓B C          |
 
 Maqam World shows the scales as images, so huzam, 'iraq, nairuz and suznak are
 built from the ajnas each page names (huzam: Sikah on the tonic, Hijaz on the
@@ -525,13 +610,13 @@ from the [Xenharmonic Wiki](https://en.xen.wiki/w/3L_4s), named as there
 
 | Name            | Intervals                | Steps   |
 | --------------- | ------------------------ | ------- |
-| dril (mohajira) | 1P 2M ↑3m ↑4P 5P 6M ↑7m  | LsLsLss |
-| gil             | 1P 2M ↑3m ↑4P 5P ↑6m ↑7m | LsLssLs |
+| dril (mohajira) | 1P 2M ↑3m ↑4 5P 6M ↑7m   | LsLsLss |
+| gil             | 1P 2M ↑3m ↑4 5P ↑6m ↑7m  | LsLssLs |
 | kleeth          | 1P 2M ↑3m 4P 5P ↑6m ↑7m  | LssLsLs |
 | bish            | 1P ↑2m ↑3m 4P 5P ↑6m ↑7m | sLsLsLs |
 | fish            | 1P ↑2m ↑3m 4P 5P ↑6m 7m  | sLsLssL |
-| jwl             | 1P ↑2m ↑3m 4P ↓5P ↑6m 7m | sLssLsL |
-| led             | 1P ↑2m 3m 4P ↓5P ↑6m 7m  | ssLsLsL |
+| jwl             | 1P ↑2m ↑3m 4P ↓5 ↑6m 7m  | sLssLsL |
+| led             | 1P ↑2m 3m 4P ↓5 ↑6m 7m   | ssLsLsL |
 
 They follow the same rules as the microtonal chords: reachable by name
 (`Scale.get("C rast")`, aliases like `"maqam rast"` and `"segah"`), not part
@@ -560,7 +645,7 @@ with an `edo`:
 
 ```js
 Scale.get("C porcupine[7]", { edo: 22 }).notes;
-// => ["C", "D", "E↓", "Gb", "G", "A↓", "Bb↑"]
+// => ["C", "D", "↓E", "Gb", "G", "↓A", "↑Bb"]
 ScaleType.forEdo(22).map((t) => t.name); // => [..., "porcupine[7]", ...]
 ScaleType.addTemperament("porcupine[8]", {
   size: 8,
@@ -574,29 +659,33 @@ ScaleType.addTemperament("porcupine[8]", {
 ```js
 import { Scale } from "@dmnerd/microtonal";
 
-Scale.get("E↓ sikah").notes; // => ["E↓", "F", "G", "A", "B↓", "C", "D"]
-Scale.detect(["C", "D", "E↓", "F", "G", "A", "B↓"], { edo: 24 });
+Scale.get("↓E sikah").notes; // => ["↓E", "F", "G", "A", "↓B", "C", "D"]
+Scale.detect(["C", "D", "↓E", "F", "G", "A", "↓B"], { edo: 24 });
 // => ["C rast"]
-Scale.scaleChords("rast", { edo: 24 }); // => [..., "(↓3)", ...]
-Scale.modeNames("C rast", { edo: 24 }); // => [["C", "rast"], ["E↓", "sikah"]]
+Scale.scaleChords("rast", { edo: 24 }); // => [..., "~", "~7"]
+Scale.modeNames("C rast", { edo: 24 });
+// => [["C", "rast"], ["D", "husayni"], ["↓E", "sikah"], ["G", "nairuz"], ["↓B", "iraq"]]
 Scale.rangeOf("C rast", { edo: 24 })("C4", "C5");
-// => ["C4", "D4", "E↓4", "F4", "G4", "A4", "B↓4", "C5"]
+// => ["C4", "D4", "↓E4", "F4", "G4", "A4", "↓B4", "C5"]
 ```
 
 `detect`, `scaleChords`, `extended`, `reduced`, `modeNames` and `rangeOf`
-accept `{ edo }`; without it they behave exactly as upstream. `get`,
-`degrees` and `steps` need no option since they only transpose.
+accept `{ edo }`; without it they behave exactly as upstream. `get` needs
+it only for temperament scales and to spell mid intervals; `degrees` and
+`steps` only transpose.
 
 #### Keys, modes, roman numerals and progressions
 
 - `Key` and `Mode` work with upped or downed tonics, since they transpose
-  12-TET patterns: `Key.majorKey("E↓").scale` =>
-  `["E↓", "F#↓", "G#↓", "A↓", "B↓", "C#↓", "D#↓"]`.
+  12-TET patterns: `Key.majorKey("↓E").scale` =>
+  `["↓E", "↓F#", "↓G#", "↓A", "↓B", "↓C#", "↓D#"]`.
 - Roman numerals take ups and downs in front: `RomanNumeral.get("↓III")`
-  has interval `"↓3M"`. Only `↑`, `↓` and `^` are accepted, since `v` is the
-  numeral five. Roman numeral objects get an `ups` property.
-- `Progression.toRomanNumerals("C", ["E↓m"])` => `["↓IIIm"]`, and
-  `fromRomanNumerals("C", ["↓III"])` => `["E↓"]`.
+  has interval `"↓3M"`. Kite's ASCII `v` is a down only before an upper case
+  numeral (`vVI` is `↓VI`), since `v` alone is the numeral five. The chord
+  type after a numeral follows Kite's chord names (`I↓`, `IVv`). Roman
+  numeral objects get an `ups` property.
+- `Progression.toRomanNumerals("C", ["↓E↓m"])` => `["↓III↓m"]`, and
+  `fromRomanNumerals("C", ["↓III"])` => `["↓E"]`.
 - `AbcNotation.scientificToAbcNotation` returns `""` for notes with ups or
   downs (ABC has no standard for them) instead of silently dropping them.
 
@@ -608,9 +697,9 @@ with flats and downs unless `sharps` is set:
 
 ```js
 Range.chromatic(["C4", "D4"], { edo: 24 });
-// => ["C4", "Db↓4", "Db4", "D↓4", "D4"]
+// => ["C4", "↓Db4", "Db4", "↓D4", "D4"]
 Range.chromatic(["C4", "D4"], { edo: 24, sharps: true });
-// => ["C4", "C↑4", "C#4", "C#↑4", "D4"]
+// => ["C4", "↑C4", "C#4", "↑C#4", "D4"]
 ```
 
 `Range.numeric` stays in MIDI numbers.
@@ -622,7 +711,7 @@ These stay 12-TET: `Note.freq`/`Note.midi` (use `Note.edoFreq`/`Note.edoMidi`),
 `voicing-dictionary`, `Pcset.chromas()`, the `chroma`/`setNum` fields of
 `Chord.get`, `Scale.get` and the dictionaries (use `forEdo` or
 `Pcset.get(…, { edo })`), and the Greek `mode` dictionary. Chord symbols with
-an upped root followed by a type starting with `b` (`C↓b9sus`) don't parse,
+an upped root followed by a type starting with `b` (`↓Cb9sus`) don't parse,
 the same ambiguity upstream has with `Cb9sus`.
 
 #### 12-TET compatibility
@@ -646,6 +735,15 @@ Behaviour that changes even for plain 12-TET input:
   "quartal triad" (`7sus4no5`; upstream only has the four-note `quartal`), so
   the dictionary has 108 chords. It ranks with the less common named chords,
   so `C F Bb` still detects `Fsus4/C` first, with `C7sus4no5` added last.
+- **Kite's chord names**: `Chord.get` and `ChordType.get` also read chord
+  names built from a known type with added notes and alterations, which
+  upstream returns empty: `Chord.get("C(b5)")` is `C E Gb`, `Chord.get("C,9")`
+  is the add9 chord. See [Chord types](#chord-types).
+- **Intervals without a quality**: `Interval.get("3")` is a major third
+  (upstream: empty), as Kite writes intervals in EDOs where a sharp is 0
+  steps.
+- **Roman numerals**: a chord type after a numeral may start with `v`
+  (`RomanNumeral.get("Iv").chordType` is `"v"`; upstream: empty).
 
 Every future fix that changes upstream behaviour is listed here.
 

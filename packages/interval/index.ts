@@ -79,8 +79,8 @@ export const num = (name: string) => props(name).num;
 export function simplify(name: IntervalName): IntervalName {
   const i = props(name);
   if (i.empty) return "";
-  const arrows = i.ups < 0 ? "↓".repeat(-i.ups) : "↑".repeat(i.ups);
-  return (i.simple < 0 ? "-" : "") + arrows + Math.abs(i.simple) + i.q;
+  const oct = Math.abs(i.simple) === 8 ? 1 : 0;
+  return props({ step: i.step, alt: i.alt, oct, dir: i.dir, ups: i.ups }).name;
 }
 
 /**

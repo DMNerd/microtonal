@@ -36,7 +36,8 @@ export function toRomanNumerals(
     const [note, chordType] = tokenize(chord);
     const intervalName = distance(tonic, note);
     const roman = romanNumeral(interval(intervalName));
-    return roman.name + chordType;
+    // written as a roman numeral would be: "Cv" is "I↓"
+    return romanNumeral(roman.name + chordType).name || roman.name + chordType;
   });
 }
 

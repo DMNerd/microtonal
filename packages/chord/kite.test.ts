@@ -69,10 +69,56 @@ describe("Kite's chord names", () => {
   test("mid chords need an EDO to be spelled", () => {
     expect(Chord.get("C~").intervals).toEqual(["1P", "3~", "5P"]);
     expect(Chord.get("C~").notes).toEqual(["C", "", "G"]);
-    expect(notes("C~", 24)).toBe("C ↑Eb G");
-    expect(notes("C~", 41)).toBe("C ↑↑Eb G");
-    expect(notes("C~7", 24)).toBe("C ↑Eb G ↑Bb");
+    expect(notes("C~", 24)).toBe("C ↓E G");
+    expect(notes("C~", 41)).toBe("C ↓↓E G");
+    expect(notes("C~7", 24)).toBe("C ↓E G ↓B");
     expect(Chord.get("C~", { edo: 22 }).notes).toEqual(["C", "", "G"]);
+  });
+
+  test("Kite's chord types: 4, 2, a, d", () => {
+    // a bare C4 stays Tonal's quartal chord
+    expect(notes("C↓4")).toBe("C ↓F G");
+    expect(notes("C4(b5)")).toBe("C F Gb");
+    expect(notes("C4,6")).toBe("C F G A");
+    expect(notes("C↑2")).toBe("C ↑D G");
+    expect(notes("Cd")).toBe("C Eb Gb");
+    expect(notes("C↓d")).toBe("C ↓Eb Gb");
+    expect(notes("C↑a")).toBe("C ↑E G#");
+    expect(notes("Cd,7")).toBe("C Eb Gb Bb");
+  });
+
+  test("a mid can't make a major 7th mid", () => {
+    expect(notes("C~M7", 24)).toBe("C ↓E G B");
+    expect(notes("C~7", 24)).toBe("C ↓E G ↓B");
+  });
+
+  // rules from Section 3 of Kite's notation guide
+  test("an alteration replaces implied arrows", () => {
+    expect(notes("C↓m9(↑7)")).toBe("C ↓Eb G ↑Bb D");
+    expect(notes("C↓(b5)")).toBe("C ↓E Gb");
+  });
+
+  test("a major 7th after another quality is an added note", () => {
+    expect(notes("C↓mM7")).toBe("C ↓Eb G B");
+    expect(notes("C↓m↓M7")).toBe("C ↓Eb G ↓B");
+    expect(notes("C↓M7")).toBe("C ↓E G ↓B");
+  });
+
+  test("alterations before more added notes", () => {
+    expect(notes("C↓(↓5)7")).toBe("C ↓E ↓G Bb");
+    expect(notes("C6(↓5)9")).toBe("C E ↓G A D");
+    expect(notes("Cd(↓5)7")).toBe("C Eb ↓Gb Bb");
+    expect(notes("C↓7(4)↓5")).toBe("C F ↓G ↓Bb");
+  });
+
+  test("11th and 13th chords have every lower degree", () => {
+    expect(notes("C↑11")).toBe("C ↑E G ↑Bb D ↑F");
+    // the 13th is not changed by a global arrow, and #11 keeps its own
+    expect(notes("C↑13")).toBe("C ↑E G ↑Bb D ↑F A");
+    expect(notes("C↓M13")).toBe("C ↓E G ↓B D ↓F A");
+    expect(notes("C↑9#11")).toBe("C ↑E G ↑Bb D F#");
+    expect(notes("C↓a7")).toBe("C ↓E G# ↓Bb");
+    expect(notes("C↓M9")).toBe("C ↓E G ↓B D");
   });
 
   test("known chords keep their names", () => {

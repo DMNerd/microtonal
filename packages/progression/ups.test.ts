@@ -15,4 +15,18 @@ describe("progressions with ups and downs", () => {
       "↑Bb7",
     ]);
   });
+
+  test("Kite's progression example", () => {
+    // "Cv - Gv - vA^m - F or Iv - Vv - vVI^m - IVv"
+    const romans = ["Iv", "Vv", "vVI^m", "IVv"];
+    expect(Progression.fromRomanNumerals("C", romans)).toEqual([
+      "C↓",
+      "G↓",
+      "↓A↑m",
+      "F↓",
+    ]);
+    expect(
+      Progression.toRomanNumerals("C", ["Cv", "Gv", "vA^m", "Fv"]),
+    ).toEqual(["I↓", "V↓", "↓VI↑m", "IV↓"]);
+  });
 });

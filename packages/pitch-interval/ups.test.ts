@@ -69,8 +69,8 @@ describe("interval ups and downs", () => {
   });
 
   test("edoPlainInterval", () => {
-    expect(edoPlainInterval("3~", 24)).toBe("↑3m");
-    expect(edoPlainInterval("3~", 41)).toBe("↑↑3m");
+    expect(edoPlainInterval("3~", 24)).toBe("↓3M");
+    expect(edoPlainInterval("3~", 41)).toBe("↓↓3M");
     expect(edoPlainInterval("4~", 24)).toBe("↑4");
     expect(edoPlainInterval("5~", 24)).toBe("↓5");
     expect(edoPlainInterval("3~", 22)).toBe("");

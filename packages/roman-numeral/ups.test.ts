@@ -19,9 +19,17 @@ describe("roman numerals with ups and downs", () => {
     expect(RomanNumeral.get("vVI").name).toBe("↓VI");
     expect(RomanNumeral.get("vvbVII").ups).toBe(-2);
     expect(RomanNumeral.get("vV").step).toBe(4);
-    // a chord type after the numeral may start with "v" (I downmajor)
-    expect(RomanNumeral.get("Iv").chordType).toBe("v");
     expect(RomanNumeral.get("IVv").roman).toBe("IV");
+  });
+
+  test("chord types are written with arrows, as chord symbols are", () => {
+    expect(RomanNumeral.get("Iv").name).toBe("I↓");
+    expect(RomanNumeral.get("Iv").chordType).toBe("↓");
+    expect(RomanNumeral.get("vVI^m").name).toBe("↓VI↑m");
+    expect(RomanNumeral.get("vIII,v7").name).toBe("↓III,↓7");
+    // Tonal chord symbols stay as written
+    expect(RomanNumeral.get("I^7").name).toBe("I^7");
+    expect(RomanNumeral.get("IIm7").name).toBe("IIm7");
   });
 
   test("from pitches and intervals", () => {

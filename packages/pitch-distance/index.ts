@@ -1,4 +1,4 @@
-import { PitchCoordinates } from "@tonaljs/pitch";
+import { edoProfile, PitchCoordinates } from "@tonaljs/pitch";
 import {
   IntervalLiteral,
   IntervalName,
@@ -46,7 +46,13 @@ export function transpose(
     noteCoord.length === 1
       ? [noteCoord[0] + intervalCoord[0]]
       : [noteCoord[0] + intervalCoord[0], noteCoord[1] + intervalCoord[1]];
-  return coordToNote(tr, ups).name;
+  const result = coordToNote(tr, ups);
+  // a sharp moves nothing where a sharp is 0 steps: no sharps or flats
+  if (edo !== undefined && result.alt && edoProfile(edo).sharp === 0) {
+    const { step, oct } = result;
+    return asNote({ step, alt: 0, oct, ups: result.ups }).name;
+  }
+  return result.name;
 }
 
 // Private

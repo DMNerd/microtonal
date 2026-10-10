@@ -181,7 +181,26 @@ const ARROWS = "(?:[↑^]+|[↓v]+)?";
 const NOTE = `,?(${ARROWS})(~?)(M|m|A|a|d|##?|bb?)?(\\d{1,2})|,?no(\\d{1,2})`;
 const GLOBAL_REGEX = new RegExp(`^(${ARROWS})(~?)(.*)$`);
 const NOTE_REGEX = new RegExp(`^(?:${NOTE})`);
-const ALTERED_REGEX = new RegExp(`^\\(((?:[ ,]?(?:${NOTE}))+)\\)$`);
+// Kite's chord types where Tonal has none or another meaning ("C4" stays
+// Tonal's quartal chord; "C↓4" is a suspended fourth)
+const KITE_TYPES: Record<string, string> = {
+  "2": "sus2",
+  "4": "sus4",
+  a: "aug",
+  a7: "aug7",
+  d: "dim",
+  d7: "dim7",
+  M9: "maj9",
+  M13: "maj13",
+};
+// Kite's 11th and 13th chords have every lower degree (Tonal's leave out the
+// 3rd of an 11th and the 11th of a 13th)
+const KITE_STACKS: Record<string, string> = {
+  "11": "1P 3M 5P 7m 9M 11P",
+  "13": "1P 3M 5P 7m 9M 11P 13M",
+  maj13: "1P 3M 5P 7M 9M 11P 13M",
+  m13: "1P 3m 5P 7m 9M 11P 13M",
+};
 // only valid names are cached, so arbitrary input can't grow the cache
 let kiteCache: Record<string, ChordType> = Object.create(null);
 
@@ -202,10 +221,22 @@ function parseKite(symbol: string): ChordType | undefined {
   for (let end = rest.length; end >= 0; end--) {
     const head = rest.slice(0, end);
     const tail = rest.slice(end);
-    const base = index[head];
-    if (!base || microtonal.includes(base) || !base.aliases.includes(head))
+    const alias = KITE_TYPES[head] ?? head;
+    const base = index[alias];
+    if (!base || microtonal.includes(base) || !base.aliases.includes(alias))
       continue;
-    const intervals = kiteIntervals(base, global, tail);
+    // a major 7th written after another quality is an added note the global
+    // arrow doesn't reach ("CvmM7" is C vEb G B), and a mid can't be major
+    const marker = /M|maj|Δ|\^/.exec(alias);
+    const keep = [...alias.matchAll(/[#b](\d+)/g)].map((m) => +m[1]);
+    if (marker && (global.mid || marker.index > 0)) keep.push(7);
+    const stack = KITE_STACKS[base.aliases[0]];
+    const intervals = kiteIntervals(
+      stack ? { ...base, intervals: stack.split(" ") } : base,
+      global,
+      tail,
+      keep,
+    );
     if (intervals) {
       const known = byIntervals[intervals.join(" ")];
       if (known) return known;
@@ -230,6 +261,7 @@ function kiteIntervals(
   base: ChordType,
   global: { ups: number; mid: boolean },
   rest: string,
+  keep: number[] = [],
 ): string[] | undefined {
   let notes: KiteNote[] = base.intervals.map((name) => {
     const i = interval(name);
@@ -237,11 +269,17 @@ function kiteIntervals(
   });
   if (global.ups || global.mid) {
     const hasThird = notes.some((n) => simple(n.num) === 3);
+    // the 3rd, 6th (not the 13th), 7th and 11th, but not a note the chord
+    // type writes with its own accidental ("C^9#11") or a major 7th after
+    // another quality
     const affected = notes.filter(
       (n) =>
-        [3, 6, 7].includes(simple(n.num)) ||
-        n.num === 11 ||
-        (!hasThird && n.num < 8 && [2, 4].includes(n.num)),
+        !keep.includes(n.num) &&
+        !(keep.includes(7) && simple(n.num) === 7) &&
+        ([3, 7].includes(simple(n.num)) ||
+          n.num === 6 ||
+          n.num === 11 ||
+          (!hasThird && n.num < 8 && [2, 4].includes(n.num))),
     );
     // a global arrow needs a note to change (no "C↓5")
     if (!affected.length) return undefined;
@@ -250,33 +288,33 @@ function kiteIntervals(
       n.mid = n.mid || global.mid;
     });
   }
+  // added notes and (alterations), in any order: "Cv(v5)7", "C6(v5)9"
   let m: RegExpExecArray | null;
-  while ((m = NOTE_REGEX.exec(rest)) && m[0]) {
-    if (m[5]) notes = notes.filter((n) => simple(n.num) !== simple(+m![5]));
-    else notes.push(kiteNote(m));
-    rest = rest.slice(m[0].length);
-  }
-  if (rest) {
-    const altered = ALTERED_REGEX.exec(rest);
-    if (!altered) return undefined;
-    let list = altered[1].replace(/ /g, ",");
-    while ((m = NOTE_REGEX.exec(list)) && m[0]) {
-      list = list.slice(m[0].length);
-      if (m[5]) return undefined;
-      const change = kiteNote(m, true);
-      const same =
-        notes.find((n) => n.num === change.num) ??
-        notes.find((n) => simple(n.num) === simple(change.num));
-      if (same) {
-        same.ups += change.ups;
-        same.mid = change.mid || (same.mid && !change.q);
-        if (change.q) same.q = change.q;
-      } else {
-        // a 2nd or 4th replaces the 3rd, as in a suspended chord
-        if ([2, 4].includes(change.num))
-          notes = notes.filter((n) => simple(n.num) !== 3);
-        notes.push(change);
+  while (rest) {
+    const group = /^\(([^()]*)\)/.exec(rest);
+    if (group) {
+      let list = group[1].replace(/ /g, ",");
+      while ((m = NOTE_REGEX.exec(list)) && m[0]) {
+        list = list.slice(m[0].length);
+        if (m[5]) return undefined;
+        notes = alter(notes, kiteNote(m, true));
       }
+      if (list) return undefined;
+      rest = rest.slice(group[0].length);
+      continue;
+    }
+    m = NOTE_REGEX.exec(rest);
+    if (!m || !m[0]) return undefined;
+    rest = rest.slice(m[0].length);
+    if (m[5]) notes = notes.filter((n) => simple(n.num) !== simple(+m![5]));
+    else {
+      // an added note on a degree the chord has replaces it, unless it is
+      // the same note ("C↓5" is not C↓ with its own 5th)
+      const added = kiteNote(m);
+      const same = notes.find((n) => n.num === added.num);
+      if (same && same.q === added.q && same.ups === added.ups && !same.mid)
+        return undefined;
+      notes = notes.filter((n) => n.num !== added.num).concat(added);
     }
   }
   notes.sort((a, b) => a.num - b.num);
@@ -288,6 +326,24 @@ function kiteIntervals(
 }
 
 const simple = (num: number) => ((num - 1) % 7) + 1;
+
+// an alteration replaces the note's ups and downs ("Cvm9(^7)" has ^Bb) and,
+// if it has one, its quality; a 2nd or 4th replaces a missing 3rd
+function alter(notes: KiteNote[], change: KiteNote): KiteNote[] {
+  const same =
+    notes.find((n) => n.num === change.num) ??
+    notes.find((n) => simple(n.num) === simple(change.num));
+  if (same) {
+    same.ups = change.ups;
+    if (change.mid) same.mid = true;
+    else if (change.q) [same.q, same.mid] = [change.q, false];
+    return notes;
+  }
+  const rest = [2, 4].includes(change.num)
+    ? notes.filter((n) => simple(n.num) !== 3)
+    : notes;
+  return [...rest, change];
+}
 
 // an accidental is relative to the major scale; a 7th alone is minor
 function kiteNote(m: RegExpExecArray, altering = false): KiteNote {

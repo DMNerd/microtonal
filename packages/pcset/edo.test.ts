@@ -106,6 +106,11 @@ describe("pcset in other EDOs", () => {
     );
     // the step below the octave
     expect(edoIntervalNames(41)[40]).toBe("↓8");
+    expect(edoIntervalNames(45)[43]).toBe("8d");
+    // 47-EDO: a sharp is one step, so stacked accidentals instead of arrows
+    expect(edoIntervalNames(47).slice(0, 5)).toEqual(
+      "1P 1A 1AA 1AAA 2dd".split(" "),
+    );
   });
 
   test("interval names where a sharp lowers the pitch or does nothing", () => {
@@ -140,7 +145,7 @@ describe("pcset in other EDOs", () => {
   test("notes", () => {
     expect(Pcset.notes(Pcset.get(["C", "↓E", "G"], Q24))).toEqual([
       "C",
-      "↑Eb",
+      "↓E",
       "G",
     ]);
   });

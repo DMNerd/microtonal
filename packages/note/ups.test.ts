@@ -41,8 +41,8 @@ describe("notes in other EDOs", () => {
 
   test("fromEdoSteps", () => {
     expect(Note.fromEdoSteps(104, 24)).toBe("E4");
-    expect(Note.fromEdoSteps(103, 24)).toBe("↑Eb4");
-    expect(Note.fromEdoSteps(7, 24, { pitchClass: true })).toBe("↑Eb");
+    expect(Note.fromEdoSteps(103, 24)).toBe("↓E4");
+    expect(Note.fromEdoSteps(7, 24, { pitchClass: true })).toBe("↓E");
     expect(Note.fromEdoSteps(-1, 24)).toBe("↑B-1");
     expect(Note.fromEdoSteps(61, 12)).toBe(Note.fromMidi(73));
     // 19-EDO: step 18 is B# and not C

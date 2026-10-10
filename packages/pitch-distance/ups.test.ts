@@ -28,4 +28,15 @@ describe("transpose and distance with ups and downs", () => {
       expect(transpose(from, distance(from, to))).toBe(to);
     }
   });
+
+  test("in an EDO where a sharp is 0 steps, no sharps or flats", () => {
+    expect(transpose("D", "3M", 14)).toBe("F");
+    expect(transpose("D", "3M")).toBe("F#");
+  });
+
+  test("a mid needs an EDO", () => {
+    expect(transpose("C", "3~", 24)).toBe("↓E");
+    expect(transpose("C", "↓3~", 53)).toBe("↑↑Eb");
+    expect(transpose("C", "3~")).toBe("");
+  });
 });

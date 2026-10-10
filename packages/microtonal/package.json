@@ -1,6 +1,6 @@
 {
   "name": "@dmnerd/microtonal",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Tonal music theory library extended to any equal division of the octave (EDO), with ups and downs notation",
   "keywords": [
     "music",

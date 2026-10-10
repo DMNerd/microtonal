@@ -301,7 +301,11 @@ export function edoSteps(pitch: Pitch, edo = 12): number {
   } else {
     steps = f * edoProfile(edo).fifth + o * edo + ups;
   }
-  if (!Number.isInteger(steps)) return NaN;
+  // a mid between two steps: its first up or down reaches the nearest one
+  if (!Number.isInteger(steps)) {
+    if (!ups) return NaN;
+    steps -= Math.sign(ups) / 2;
+  }
   return pitch.oct === undefined ? mod(steps, edo) : steps;
 }
 

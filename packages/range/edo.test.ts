@@ -5,7 +5,7 @@ describe("chromatic in an EDO", () => {
   test("24-EDO quarter tones", () => {
     expect(Range.chromatic(["C4", "D4"], { edo: 24 })).toEqual([
       "C4",
-      "↓Db4",
+      "↑C4",
       "Db4",
       "↓D4",
       "D4",
@@ -14,7 +14,7 @@ describe("chromatic in an EDO", () => {
       "C4",
       "↑C4",
       "C#4",
-      "↑C#4",
+      "↓D4",
       "D4",
     ]);
   });

@@ -13,10 +13,10 @@ describe("simplify in an EDO", () => {
     expect(Note.simplify("C##", { edo: 19 })).toBe("Db");
     expect(Note.simplify("E#", { edo: 19 })).toBe("E#");
     expect(Note.simplify("B#3", { edo: 19 })).toBe("B#3");
-    // 31-EDO: a double sharp is simplest with an up
-    expect(Note.simplify("C##4", { edo: 31 })).toBe("↑Db4");
-    // ups and downs are part of the pitch
-    expect(Note.simplify("↑C#", { edo: 24 })).toBe("↑C#");
+    // 31-EDO: a double sharp is simplest as a plain letter with an arrow
+    expect(Note.simplify("C##4", { edo: 31 })).toBe("↓D4");
+    // ups and downs are part of the pitch: ↑C# is ↓D, a plain letter
+    expect(Note.simplify("↑C#", { edo: 24 })).toBe("↓D");
     expect(Note.simplify("↑Db", { edo: 24 })).toBe("↓D");
     expect(Note.simplify("↑C", { edo: 12 })).toBe("C#");
   });

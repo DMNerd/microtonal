@@ -1,5 +1,6 @@
 import { isNamedPitch, isPitch, Pitch } from "@tonaljs/pitch";
 import { interval } from "@tonaljs/pitch-interval";
+import { get as getChordType } from "@tonaljs/chord-type";
 import {
   accToAlt,
   altToAcc,
@@ -98,7 +99,7 @@ function fromPitch(pitch: Pitch): RomanNumeral | NoRomanNumeral {
 // "v" is a down only before an upper case numeral ("vVI"), not the numeral v
 const UPS_REGEX = /^((?:[↑↓^]|v(?=[v↑↓^]*[#bx]*[IV]))*)(.*)$/;
 const REGEX =
-  /^(#{1,}|b{1,}|x{1,}|)(IV|I{1,3}|VI{0,2}|iv|i{1,3}|vi{0,2})((?:v|[^IViv])[^IViv]*|)$/;
+  /^(#{1,}|b{1,}|x{1,}|)(IV|I{1,3}|VI{0,2}|iv|i{1,3}|vi{0,2})((?:v|[^IViv]).*|)$/;
 
 // [name, accidentals, romanNumeral, chordType]
 type RomanNumeralTokens = [string, string, string, string];
@@ -112,13 +113,19 @@ const NAMES_MINOR = ROMANS.toLowerCase().split(" ");
 
 function parse(src: string): RomanNumeral | NoRomanNumeral {
   const [, arrows, plain] = UPS_REGEX.exec(src) as string[];
-  const [plainName, acc, roman, chordType] = tokenize(plain);
+  const [, acc, roman, writtenType] = tokenize(plain);
   if (!roman) {
     return NO_ROMAN_NUMERAL;
   }
 
+  // chord types with Kite's ASCII arrows are written with arrows ("Iv" is "I↓")
+  const type = getChordType(writtenType);
+  const chordTypeName =
+    type.empty || type.aliases.includes(writtenType)
+      ? writtenType
+      : writtenType.replace(/\^/g, "↑").replace(/v/g, "↓");
   const ups = arrowsToUps(arrows);
-  const name = upsToArrows(ups) + plainName;
+  const name = upsToArrows(ups) + acc + roman + chordTypeName;
   const upperRoman = roman.toUpperCase();
   const step = NAMES.indexOf(upperRoman);
   const alt = accToAlt(acc);
@@ -130,7 +137,7 @@ function parse(src: string): RomanNumeral | NoRomanNumeral {
     interval: interval({ step, alt, dir, ups }).name,
     acc,
     ups,
-    chordType,
+    chordType: chordTypeName,
     alt,
     step,
     major: roman === upperRoman,

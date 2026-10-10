@@ -9,6 +9,7 @@ import {
   Pitch,
   edoChroma as pitchEdoChroma,
   edoCrossesNatural,
+  edoProfile,
   edoKey,
   edoOption,
   isEdo,
@@ -170,8 +171,9 @@ export function edoMidi(
 export type EdoAccidental = "sharp" | "flat";
 
 const LETTERS = ["C", "D", "E", "F", "G", "A", "B"];
-const SPELLING_ACCIDENTALS = ["", "#", "b", "##", "bb"];
-const spellingCache: Record<string, string[]> = {};
+const SPELLING_ACCIDENTALS = ["", "#", "b", "##", "bb", "###", "bbb"];
+const NO_ARROWS_COST = 100;
+const spellingCache: Record<string, string[][]> = {};
 const CROSSING_COST = 1.5;
 
 /**
@@ -182,12 +184,21 @@ const CROSSING_COST = 1.5;
  */
 export function edoNames(edo: number, accidental: EdoAccidental): string[] {
   if (!isEdo(edo)) return [];
+  return edoSpellings(edo, accidental).map((names) => names[0]);
+}
+
+// every spelling of each pitch class of an EDO, the simplest first
+function edoSpellings(edo: number, accidental: EdoAccidental): string[][] {
   const key = `${edoKey(edo)}/${accidental}`;
-  if (spellingCache[key]) return spellingCache[key].slice();
+  if (spellingCache[key]) return spellingCache[key];
 
   const preferUps = accidental === "sharp";
   const viewAcc = preferUps ? "#" : "b";
-  const best: { name: string; cost: number[] }[] = [];
+  // where a sharp is one step, stacked accidentals instead of arrows
+  const { sharp, spelling } = edoProfile(edo);
+  const arrowCost =
+    spelling === "fifths" && Math.abs(sharp) === 1 ? NO_ARROWS_COST : 1;
+  const candidates: { name: string; cost: number[] }[][] = [];
   for (const letter of LETTERS) {
     for (const acc of SPELLING_ACCIDENTALS) {
       const size = pitchEdoChroma(props(letter + acc), edo);
@@ -196,29 +207,24 @@ export function edoNames(edo: number, accidental: EdoAccidental): string[] {
         const ups = diff > edo / 2 ? diff - edo : diff;
         const pitch = { ...props(letter + acc), ups };
         const cost = [
-          Math.abs(ups) +
-            (acc.length > 1 ? 1 : 0) +
+          Math.abs(ups) * arrowCost +
+            Math.max(0, acc.length - 1) +
             (edoCrossesNatural(pitch, edo) ? CROSSING_COST : 0),
-          ups === 0 || ups > 0 === preferUps ? 0 : 1,
           acc.length,
+          ups === 0 || ups > 0 === preferUps ? 0 : 1,
           (acc[0] === "#" && (letter === "E" || letter === "B")) ||
           (acc[0] === "b" && (letter === "C" || letter === "F"))
             ? 1
             : 0,
           acc === "" || acc[0] === viewAcc ? 0 : 1,
         ];
-        const current = best[chroma];
-        if (!current || compareCosts(cost, current.cost) < 0) {
-          best[chroma] = {
-            name: props(pitch).name,
-            cost,
-          };
-        }
+        (candidates[chroma] ??= []).push({ name: props(pitch).name, cost });
       }
     }
   }
-  spellingCache[key] = best.map((b) => b.name);
-  return spellingCache[key].slice();
+  return (spellingCache[key] = candidates.map((list) =>
+    list.sort((a, b) => compareCosts(a.cost, b.cost)).map((c) => c.name),
+  ));
 }
 
 function compareCosts(a: number[], b: number[]): number {
@@ -518,7 +524,12 @@ export function enharmonic(
 
 function enharmonicInEdo(src: Note, destName: string | undefined, edo: number) {
   if (!destName) {
-    return spellInEdo(src, edo, leansFlat(src) ? "sharp" : "flat");
+    // the opposite view's spelling; the views agree on many spellings with
+    // ups or downs (24-EDO ↓D), so those take the next one (↑C#)
+    const view = leansFlat(src) ? "sharp" : "flat";
+    const [first, next] = edoSpellings(edo, view)[pitchEdoChroma(src, edo)];
+    const other = first === src.pc && src.ups && next ? next : first;
+    return enharmonicInEdo(src, other, edo);
   }
   const dest = get(destName);
   if (dest.empty) return "";

@@ -15,17 +15,13 @@ describe("edoNames", () => {
 
   test("24-EDO sharp view", () => {
     expect(Note.edoNames(24, "sharp")).toEqual(
-      $(
-        "C ↑C C# ↑C# D ↑D D# ↑D# E ↑E F ↑F F# ↑F# G ↑G G# ↑G# A ↑A A# ↑A# B ↑B",
-      ),
+      $("C ↑C C# ↓D D ↑D D# ↓E E ↑E F ↑F F# ↓G G ↑G G# ↓A A ↑A A# ↓B B ↑B"),
     );
   });
 
-  test("24-EDO flat view: downs from the note above", () => {
+  test("24-EDO flat view: flats, and plain letters with arrows", () => {
     expect(Note.edoNames(24, "flat")).toEqual(
-      $(
-        "C ↓Db Db ↓D D ↓Eb Eb ↓E E ↓F F ↓Gb Gb ↓G G ↓Ab Ab ↓A A ↓Bb Bb ↓B B ↓C",
-      ),
+      $("C ↑C Db ↓D D ↑D Eb ↓E E ↓F F ↑F Gb ↓G G ↑G Ab ↓A A ↑A Bb ↓B B ↓C"),
     );
   });
 
@@ -38,10 +34,21 @@ describe("edoNames", () => {
     );
   });
 
-  test("31-EDO: ups instead of double accidentals", () => {
+  test("31-EDO: arrows instead of double accidentals", () => {
     expect(Note.edoNames(31, "sharp").slice(0, 6)).toEqual(
-      $("C ↑C C# Db ↑Db D"),
+      $("C ↑C C# Db ↓D D"),
     );
+  });
+
+  test("a plain letter with an arrow before an accidental with one", () => {
+    // as Kite's notation guide spells them
+    expect(Note.edoNames(24, "sharp")[3]).toBe("↓D");
+    expect(Note.edoNames(24, "flat")[1]).toBe("↑C");
+  });
+
+  test("stacked accidentals where a sharp is one step", () => {
+    expect(Note.edoNames(26, "sharp")[2]).toBe("C##");
+    expect(Note.edoNames(47, "sharp")[3]).toBe("C###");
   });
 
   test("17- and 22-EDO avoid E#, B#, Cb and Fb when they can", () => {
@@ -84,7 +91,7 @@ describe("edoNames", () => {
 
 describe("fromEdoSteps with an accidental preference", () => {
   test("uses edoNames and keeps octaves", () => {
-    expect(Note.fromEdoSteps(103, 24, { accidental: "sharp" })).toBe("↑D#4");
+    expect(Note.fromEdoSteps(103, 24, { accidental: "sharp" })).toBe("↓E4");
     expect(Note.fromEdoSteps(103, 24, { accidental: "flat" })).toBe("↓E4");
     expect(
       Note.fromEdoSteps(7, 24, { accidental: "flat", pitchClass: true }),
@@ -103,13 +110,13 @@ describe("fromEdoSteps with an accidental preference", () => {
   });
 
   test("without a preference nothing changes", () => {
-    expect(Note.fromEdoSteps(103, 24)).toBe("↑Eb4");
+    expect(Note.fromEdoSteps(103, 24)).toBe("↓E4");
   });
 });
 
 describe("transposeEdoSteps", () => {
   test("keeps the letter where it can", () => {
-    expect(Note.transposeEdoSteps("C4", 7, 24)).toBe("↑Eb4");
+    expect(Note.transposeEdoSteps("C4", 7, 24)).toBe("↓E4");
     expect(Note.transposeEdoSteps("C#", 1, 24)).toBe("↑C#");
     expect(Note.transposeEdoSteps("E4", -1, 24)).toBe("↓E4");
     expect(Note.transposeEdoSteps("Bb3", 3, 19)).toBe("C4");

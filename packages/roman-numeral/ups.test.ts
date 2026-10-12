@@ -1,5 +1,8 @@
 import { describe, expect, test } from "vitest";
+import { interval as getInterval } from "@tonaljs/pitch-interval";
 import RomanNumeral from "./index";
+
+const Interval = { get: getInterval };
 
 describe("roman numerals with ups and downs", () => {
   test("parse", () => {
@@ -36,5 +39,7 @@ describe("roman numerals with ups and downs", () => {
     expect(
       RomanNumeral.get({ step: 2, alt: 0, oct: 0, dir: 1, ups: -1 }).name,
     ).toBe("↓III");
+    // a mid interval has no numeral
+    expect(RomanNumeral.get(Interval.get("3~")).empty).toBe(true);
   });
 });

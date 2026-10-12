@@ -91,6 +91,8 @@ export function names(major = true) {
 }
 
 function fromPitch(pitch: Pitch): RomanNumeral | NoRomanNumeral {
+  // a mid interval has no numeral
+  if (!Number.isInteger(pitch.alt)) return NO_ROMAN_NUMERAL;
   return get(
     upsToArrows(pitch.ups ?? 0) + altToAcc(pitch.alt) + NAMES[pitch.step],
   );

@@ -738,7 +738,9 @@ it only for temperament scales and to spell mid intervals; `degrees` and
   type after a numeral follows Kite's chord names and is written with
   arrows as chord symbols are: `RomanNumeral.get("vVI^m").name` =>
   `"↓VI↑m"`, `"Iv"` => `"I↓"`, while Tonal symbols stay as written
-  (`"I^7"`). Roman numeral objects get an `ups` property.
+  (`"I^7"`). Roman numeral objects get an `ups` property. A mid interval
+  has no numeral: `RomanNumeral.get(Interval.get("3~"))` is empty (spell it
+  in an EDO first with `edoPlainInterval`).
 - `Progression.toRomanNumerals("C", ["↓E↓m"])` => `["↓III↓m"]`, and
   `fromRomanNumerals("C", ["↓III"])` => `["↓E"]`. Both follow Kite's example
   `Cv - Gv - vA^m` = `Iv - Vv - vVI^m`, written `I↓ V↓ ↓VI↑m`.
